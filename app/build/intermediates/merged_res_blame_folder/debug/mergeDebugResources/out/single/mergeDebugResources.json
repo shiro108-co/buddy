@@ -1,0 +1,22 @@
+[
+    {
+        "merged": "com.buddyv2.app-debug-37:/drawable_circle_bg.xml.flat",
+        "source": "com.buddyv2.app-main-39:/drawable/circle_bg.xml"
+    },
+    {
+        "merged": "com.buddyv2.app-debug-37:/xml_data_extraction_rules.xml.flat",
+        "source": "com.buddyv2.app-main-39:/xml/data_extraction_rules.xml"
+    },
+    {
+        "merged": "com.buddyv2.app-debug-37:/xml_backup_rules.xml.flat",
+        "source": "com.buddyv2.app-main-39:/xml/backup_rules.xml"
+    },
+    {
+        "merged": "com.buddyv2.app-debug-37:/drawable_rounded_bg.xml.flat",
+        "source": "com.buddyv2.app-main-39:/drawable/rounded_bg.xml"
+    },
+    {
+        "merged": "com.buddyv2.app-debug-37:/layout_activity_main.xml.flat",
+        "source": "com.buddyv2.app-main-39:/layout/activity_main.xml"
+    }
+]

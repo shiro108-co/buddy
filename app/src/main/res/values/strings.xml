@@ -1,0 +1,19 @@
+<resources>
+    <string name="app_name">Buddy V2</string>
+    <string name="tap_mic_to_speak">Tap mic to speak</string>
+    <string name="mic_button_desc">Voice command button</string>
+    <string name="open_app">Open App</string>
+    <string name="make_call">Make Call</string>
+    <string name="send_whatsapp">Send WhatsApp</string>
+    <string name="search_web">Search Web</string>
+    <string name="voice_commands_help">
+        Voice Commands:\n
+        • "Open [app name]" - Launch an app\n
+        • "Call [number]" - Make a phone call\n
+        • "WhatsApp [contact] [message]" - Send WhatsApp message\n
+        • "Message [contact] [message]" - Send WhatsApp message\n
+        • "Search [query]" - Search on Google\n
+        • "Google [query]" - Search on Google\n
+        • "Look up [query]" - Search on Google
+    </string>
+</resources>

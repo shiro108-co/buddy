@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="accent">#25D366</color>
+    <color name="background">#FFFFFF</color>
+    <color name="error">#B00020</color>
+    <color name="on_background">#212121</color>
+    <color name="on_error">#FFFFFF</color>
+    <color name="on_primary">#FFFFFF</color>
+    <color name="on_secondary">#000000</color>
+    <color name="on_surface">#212121</color>
+    <color name="outline">#E0E0E0</color>
+    <color name="primary">#6200EE</color>
+    <color name="primary_text">#212121</color>
+    <color name="primary_variant">#3700B3</color>
+    <color name="secondary">#03DAC5</color>
+    <color name="secondary_text">#757575</color>
+    <color name="secondary_variant">#018786</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="surface_variant">#F5F5F5</color>
+    <color name="tertiary">#FF5722</color>
+    <string name="app_name">Buddy V2</string>
+    <string name="make_call">Make Call</string>
+    <string name="mic_button_desc">Voice command button</string>
+    <string name="open_app">Open App</string>
+    <string name="search_web">Search Web</string>
+    <string name="send_whatsapp">Send WhatsApp</string>
+    <string name="tap_mic_to_speak">Tap mic to speak</string>
+    <string name="voice_commands_help">
+        Voice Commands:\n
+        • "Open [app name]" - Launch an app\n
+        • "Call [number]" - Make a phone call\n
+        • "WhatsApp [contact] [message]" - Send WhatsApp message\n
+        • "Message [contact] [message]" - Send WhatsApp message\n
+        • "Search [query]" - Search on Google\n
+        • "Google [query]" - Search on Google\n
+        • "Look up [query]" - Search on Google
+    </string>
+    <style name="Theme.BuddyV2" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryVariant">@color/primary_variant</item>
+        <item name="colorOnPrimary">@color/on_primary</item>
+        <item name="colorSecondary">@color/secondary</item>
+        <item name="colorSecondaryVariant">@color/secondary_variant</item>
+        <item name="colorOnSecondary">@color/on_secondary</item>
+        <item name="colorError">@color/error</item>
+        <item name="colorOnError">@color/on_error</item>
+        <item name="colorSurface">@color/surface</item>
+        <item name="colorOnSurface">@color/on_surface</item>
+        <item name="android:colorBackground">@color/background</item>
+        <item name="colorOnBackground">@color/on_background</item>
+    </style>
+    <style name="Theme.BuddyV2.AppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar"/>
+    <style name="Theme.BuddyV2.NoActionBar" parent="Theme.BuddyV2">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+    <style name="Theme.BuddyV2.PopupOverlay" parent="ThemeOverlay.AppCompat.Light"/>
+</resources>
