@@ -211,13 +211,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun extractContactAndMessage(command: String): Pair<String, String>? {
-        // Pattern: "whatsapp [contact] [message]" or "message [contact] [message]"
-        val whatsappMatch = "whatsapp\\s+(.+?)\\s+(.+)".toRegex().find(command)
-        val messageMatch = "message\\s+(.+?)\\s+(.+)".toRegex().find(command)
-
-        return whatsappMatch?.let { (it.groupValues[1], it.groupValues[2]) }
-            ?: messageMatch?.let { (it.groupValues[1], it.groupValues[2]) }
+    val patterns = listOf(
+        "whatsapp\\s+(.+?)\\s+(.+)".toRegex(),
+        "message\\s+(.+?)\\s+(.+)".toRegex()
+    )
+    return patterns.firstNotNullOfOrNull { pattern ->
+        pattern.find(command)?.let {
+            it.groupValues[1] to it.groupValues[2]
+        }
     }
+}
 
     private fun extractSearchQuery(command: String): String? {
         val patterns = listOf(
