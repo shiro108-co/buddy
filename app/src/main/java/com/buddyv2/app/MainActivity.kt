@@ -85,7 +85,7 @@ class MainActivity : AppCompatActivity() {
                 // Check for actual microphone-capable Bluetooth devices using communication devices
                 val devices = audioManager?.getAvailableCommunicationDevices()
                 isBluetoothMicAvailable = devices?.any { it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO || it.type == AudioDeviceInfo.TYPE_BLE_HEADSET } == true
-                Log.d(TAG, "Bluetooth mic available: $isBluetoothMicAvailable, comm devices: ${devices?.joinToString { "${it.typeName}(${it.type})" }}")
+                Log.d(TAG, "Bluetooth mic available: $isBluetoothMicAvailable, comm devices: ${devices?.joinToString { "${audioDeviceTypeName(it.type)}(${it.type})" }}")
             } else {
                 isBluetoothMicAvailable = false
                 Log.d(TAG, "Bluetooth CONNECT permission not granted")
@@ -97,7 +97,7 @@ class MainActivity : AppCompatActivity() {
             isBluetoothMicAvailable = hasBluetooth && hasBluetoothAdmin
             if (isBluetoothMicAvailable) {
                 val devices = audioManager?.getDevices(AudioManager.GET_DEVICES_INPUTS)
-                Log.d(TAG, "Legacy Bluetooth available, input devices: ${devices?.joinToString { it.typeName }}")
+                Log.d(TAG, "Legacy Bluetooth available, input devices: ${devices?.joinToString { audioDeviceTypeName(it.type) }}")
             }
         }
     }
@@ -121,9 +121,9 @@ class MainActivity : AppCompatActivity() {
         val result = audioManager!!.setCommunicationDevice(btDevice)
         if (result) {
             selectedCommunicationDevice = btDevice
-            Log.d(TAG, "Bluetooth mic routed successfully to: ${btDevice.typeName} (type=${btDevice.type})")
+            Log.d(TAG, "Bluetooth mic routed successfully to: ${audioDeviceTypeName(btDevice.type)} (type=${btDevice.type})")
         } else {
-            Log.w(TAG, "setCommunicationDevice returned false for: ${btDevice.typeName}")
+            Log.w(TAG, "setCommunicationDevice returned false for: ${audioDeviceTypeName(btDevice.type)}")
             isBluetoothMicAvailable = false
             selectedCommunicationDevice = null
         }
@@ -132,11 +132,43 @@ class MainActivity : AppCompatActivity() {
 
     private fun clearCommunicationDevice() {
         audioManager?.let { am ->
-            if (selectedCommunicationDevice != null) {
+            selectedCommunicationDevice?.let { device ->
                 val result = am.setCommunicationDevice(null)
-                Log.d(TAG, "Cleared communication device, fallback to default: $result")
-                selectedCommunicationDevice = null
+                Log.d(TAG, "Cleared communication device (${audioDeviceTypeName(device.type)}), fallback to default: $result")
             }
+            selectedCommunicationDevice = null
+        }
+    }
+
+    private fun audioDeviceTypeName(type: Int): String {
+        return when (type) {
+            AudioDeviceInfo.TYPE_BUILTIN_EARPIECE -> "EARPIECE"
+            AudioDeviceInfo.TYPE_BUILTIN_SPEAKER -> "SPEAKER"
+            AudioDeviceInfo.TYPE_WIRED_HEADSET -> "WIRED_HEADSET"
+            AudioDeviceInfo.TYPE_WIRED_HEADPHONES -> "WIRED_HEADPHONES"
+            AudioDeviceInfo.TYPE_BLUETOOTH_SCO -> "BT_SCO"
+            AudioDeviceInfo.TYPE_BLUETOOTH_A2DP -> "BT_A2DP"
+            AudioDeviceInfo.TYPE_HDMI -> "HDMI"
+            AudioDeviceInfo.TYPE_BUILTIN_MIC -> "BUILTIN_MIC"
+            AudioDeviceInfo.TYPE_FM_TUNER -> "FM_TUNER"
+            AudioDeviceInfo.TYPE_TV_TUNER -> "TV_TUNER"
+            AudioDeviceInfo.TYPE_TELEPHONY -> "TELEPHONY"
+            AudioDeviceInfo.TYPE_AUX_LINE -> "AUX_LINE"
+            AudioDeviceInfo.TYPE_IP -> "IP"
+            AudioDeviceInfo.TYPE_BUS -> "BUS"
+            AudioDeviceInfo.TYPE_USB_DEVICE -> "USB_DEVICE"
+            AudioDeviceInfo.TYPE_USB_HEADSET -> "USB_HEADSET"
+            AudioDeviceInfo.TYPE_USB_ACCESSORY -> "USB_ACCESSORY"
+            AudioDeviceInfo.TYPE_DOCK -> "DOCK"
+            AudioDeviceInfo.TYPE_FM -> "FM"
+            AudioDeviceInfo.TYPE_BUILTIN_SPEAKER_SAFE -> "SPEAKER_SAFE"
+            AudioDeviceInfo.TYPE_REMOTE_SUBMIX -> "REMOTE_SUBMIX"
+            AudioDeviceInfo.TYPE_TELEPHONY_TX -> "TELEPHONY_TX"
+            AudioDeviceInfo.TYPE_USB_ACCESSORY_TX -> "USB_ACCESSORY_TX"
+            AudioDeviceInfo.TYPE_BLE_HEADSET -> "BLE_HEADSET"
+            AudioDeviceInfo.TYPE_BLE_SPEAKER -> "BLE_SPEAKER"
+            AudioDeviceInfo.TYPE_ECHO_CANCEL -> "ECHO_CANCEL"
+            else -> "UNKNOWN($type)"
         }
     }
 
@@ -251,7 +283,7 @@ class MainActivity : AppCompatActivity() {
     private fun getActiveAudioRoute(): String {
         return try {
             val devices = audioManager?.getDevices(AudioManager.GET_DEVICES_INPUTS)
-            devices?.joinToString(", ") { "${it.typeName}(${it.type})" } ?: "none"
+            devices?.joinToString(", ") { "${audioDeviceTypeName(it.type)}(${it.type})" } ?: "none"
         } catch (e: Exception) {
             "error"
         }
