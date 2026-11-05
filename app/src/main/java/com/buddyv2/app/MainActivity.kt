@@ -45,8 +45,7 @@ class MainActivity : AppCompatActivity() {
     )
 
     private val bluetoothPermissions = arrayOf(
-        Manifest.permission.BLUETOOTH_CONNECT,
-        Manifest.permission.BLUETOOTH_RECORD
+        Manifest.permission.BLUETOOTH_CONNECT
     )
 
     companion object {
@@ -79,19 +78,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkBluetoothMicAvailability() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val hasBluetoothConnect = ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
-            val hasBluetoothRecord = ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_RECORD) == PackageManager.PERMISSION_GRANTED
-            if (hasBluetoothConnect && hasBluetoothRecord) {
+            if (hasBluetoothConnect) {
                 val devices = audioManager?.getDevices(AudioManager.GET_DEVICES_INPUTS)
                 isBluetoothMicAvailable = devices?.any { it.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || it.type == AudioDeviceInfo.TYPE_BLE_HEADSET || it.type == AudioDeviceInfo.TYPE_BLE_SPEAKER } == true
                 Log.d(TAG, "Bluetooth mic available: $isBluetoothMicAvailable, devices: ${devices?.joinToString { it.type.toString() }}")
             } else {
                 isBluetoothMicAvailable = false
-                Log.d(TAG, "Bluetooth permissions not granted")
+                Log.d(TAG, "Bluetooth CONNECT permission not granted")
             }
         } else {
-            // Legacy Bluetooth permissions
+            // Legacy Bluetooth permissions (Android 11 and below)
             val hasBluetooth = ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH) == PackageManager.PERMISSION_GRANTED
             val hasBluetoothAdmin = ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_ADMIN) == PackageManager.PERMISSION_GRANTED
             isBluetoothMicAvailable = hasBluetooth && hasBluetoothAdmin
