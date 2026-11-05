@@ -50,7 +50,7 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "BuddyV2Voice"
-        const val MAX_LISTENING_DURATION_MS = 4000
+        const val MAX_LISTENING_DURATION_MS = 5000
         const val SILENCE_TIMEOUT_MS = 5000
     }
 
