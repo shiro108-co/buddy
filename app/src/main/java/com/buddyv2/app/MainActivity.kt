@@ -211,17 +211,25 @@ class MainActivity : AppCompatActivity() {
                         SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> Pair("TIMEOUT", "Listening timed out. Tap mic and speak.")
                         else -> Pair("UNKNOWN_$error", "Recognition error ($error). Try again.")
                     }
-                    Log.w(TAG, "onError: code=$error, type=$errorType, message=$userMessage, isListening=$isListening, activeRoute=${getActiveAudioRoute()}")
+                    // Fatal errors that should stop listening: AUDIO, PERMISSIONS, BUSY, SERVER, CLIENT
+                    // Non-fatal (user can retry): TIMEOUT, NO_MATCH, NETWORK, NETWORK_TIMEOUT
+                    val isFatal = when (error) {
+                        SpeechRecognizer.ERROR_AUDIO,
+                        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS,
+                        SpeechRecognizer.ERROR_RECOGNIZER_BUSY,
+                        SpeechRecognizer.ERROR_SERVER,
+                        SpeechRecognizer.ERROR_CLIENT -> true
+                        else -> false
+                    }
+                    Log.w(TAG, "onError: code=$error, type=$errorType, isFatal=$isFatal, isListening=$isListening, isProcessing=$isProcessing, activeRoute=${getActiveAudioRoute()}")
                     runOnUiThread {
-                        // Don't reset UI immediately for ERROR_SPEECH_TIMEOUT if we might still get results
-                        // Only reset if we're not currently processing or if it's a fatal error
-                        val isFatal = error != SpeechRecognizer.ERROR_SPEECH_TIMEOUT && error != SpeechRecognizer.ERROR_NO_MATCH
-                        if (isFatal || !isProcessing) {
+                        if (isFatal) {
                             binding.statusText.text = getString(R.string.tap_mic_to_speak)
                             isListening = false
                             isProcessing = false
                             binding.micButton.setImageResource(android.R.drawable.ic_btn_speak_now)
                         }
+                        // For non-fatal errors (TIMEOUT, NO_MATCH, NETWORK), keep listening state so user can retry
                         Toast.makeText(this@MainActivity, userMessage, Toast.LENGTH_LONG).show()
                     }
                 }
@@ -324,6 +332,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startListening() {
+        // Check RECORD_AUDIO permission first
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            Log.w(TAG, "RECORD_AUDIO permission not granted")
+            Toast.makeText(this, "Microphone permission required", Toast.LENGTH_SHORT).show()
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), PERMISSION_REQUEST_CODE)
+            return
+        }
+
         // Re-check Bluetooth mic availability in case it changed
         checkBluetoothMicAvailability()
 
