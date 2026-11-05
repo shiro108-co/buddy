@@ -36,6 +36,7 @@ class MainActivity : AppCompatActivity() {
     private var isListening = false
     private var isProcessing = false
     private var isBluetoothMicAvailable = false
+    private var selectedCommunicationDevice: AudioDeviceInfo? = null
 
     private val permissions = arrayOf(
         Manifest.permission.RECORD_AUDIO,
@@ -81,9 +82,10 @@ class MainActivity : AppCompatActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val hasBluetoothConnect = ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
             if (hasBluetoothConnect) {
-                val devices = audioManager?.getDevices(AudioManager.GET_DEVICES_INPUTS)
-                isBluetoothMicAvailable = devices?.any { it.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || it.type == AudioDeviceInfo.TYPE_BLE_HEADSET || it.type == AudioDeviceInfo.TYPE_BLE_SPEAKER } == true
-                Log.d(TAG, "Bluetooth mic available: $isBluetoothMicAvailable, devices: ${devices?.joinToString { it.type.toString() }}")
+                // Check for actual microphone-capable Bluetooth devices using communication devices
+                val devices = audioManager?.getAvailableCommunicationDevices()
+                isBluetoothMicAvailable = devices?.any { it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO || it.type == AudioDeviceInfo.TYPE_BLE_HEADSET } == true
+                Log.d(TAG, "Bluetooth mic available: $isBluetoothMicAvailable, comm devices: ${devices?.joinToString { "${it.typeName}(${it.type})" }}")
             } else {
                 isBluetoothMicAvailable = false
                 Log.d(TAG, "Bluetooth CONNECT permission not granted")
@@ -93,14 +95,49 @@ class MainActivity : AppCompatActivity() {
             val hasBluetooth = ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH) == PackageManager.PERMISSION_GRANTED
             val hasBluetoothAdmin = ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_ADMIN) == PackageManager.PERMISSION_GRANTED
             isBluetoothMicAvailable = hasBluetooth && hasBluetoothAdmin
+            if (isBluetoothMicAvailable) {
+                val devices = audioManager?.getDevices(AudioManager.GET_DEVICES_INPUTS)
+                Log.d(TAG, "Legacy Bluetooth available, input devices: ${devices?.joinToString { it.typeName }}")
+            }
         }
     }
 
     private fun routeAudioToBluetoothMic(): Boolean {
-        if (!isBluetoothMicAvailable || audioManager == null) return false
-        val devices = audioManager!!.getDevices(AudioManager.GET_DEVICES_INPUTS)
-        val btDevice = devices.firstOrNull { it.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || it.type == AudioDeviceInfo.TYPE_BLE_HEADSET || it.type == AudioDeviceInfo.TYPE_BLE_SPEAKER }
-        return btDevice?.let { audioManager!!.setCommunicationDevice(it); true } ?: false
+        if (!isBluetoothMicAvailable || audioManager == null) {
+            Log.d(TAG, "routeAudioToBluetoothMic: not available or no audioManager")
+            return false
+        }
+
+        // Get available COMMUNICATION (output) devices for setCommunicationDevice
+        val commDevices = audioManager!!.getAvailableCommunicationDevices()
+        val btDevice = commDevices?.firstOrNull { it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO || it.type == AudioDeviceInfo.TYPE_BLE_HEADSET }
+
+        if (btDevice == null) {
+            Log.w(TAG, "No Bluetooth SCO/LE headset communication device found for routing")
+            isBluetoothMicAvailable = false
+            return false
+        }
+
+        val result = audioManager!!.setCommunicationDevice(btDevice)
+        if (result) {
+            selectedCommunicationDevice = btDevice
+            Log.d(TAG, "Bluetooth mic routed successfully to: ${btDevice.typeName} (type=${btDevice.type})")
+        } else {
+            Log.w(TAG, "setCommunicationDevice returned false for: ${btDevice.typeName}")
+            isBluetoothMicAvailable = false
+            selectedCommunicationDevice = null
+        }
+        return result
+    }
+
+    private fun clearCommunicationDevice() {
+        audioManager?.let { am ->
+            if (selectedCommunicationDevice != null) {
+                val result = am.setCommunicationDevice(null)
+                Log.d(TAG, "Cleared communication device, fallback to default: $result")
+                selectedCommunicationDevice = null
+            }
+        }
     }
 
     private fun initTextToSpeech() {
@@ -116,19 +153,19 @@ class MainActivity : AppCompatActivity() {
             speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this)
             speechRecognizer?.setRecognitionListener(object : RecognitionListener {
                 override fun onReadyForSpeech(params: Bundle?) {
-                    Log.d(TAG, "onReadyForSpeech")
+                    Log.d(TAG, "onReadyForSpeech - recognizer ready, waiting for speech")
                     runOnUiThread { binding.statusText.text = getString(R.string.listening) }
                 }
 
                 override fun onBeginningOfSpeech() {
-                    Log.d(TAG, "onBeginningOfSpeech - speech started")
+                    Log.d(TAG, "onBeginningOfSpeech - speech detected, recording...")
                 }
                 override fun onRmsChanged(rmsdB: Float) {
                     // Log.d(TAG, "onRmsChanged: $rmsdB")
                 }
                 override fun onBufferReceived(buffer: ByteArray?) {}
                 override fun onEndOfSpeech() {
-                    Log.d(TAG, "onEndOfSpeech - speech ended, finalizing...")
+                    Log.d(TAG, "onEndOfSpeech - speech ended, finalizing recognition...")
                     runOnUiThread { binding.statusText.text = getString(R.string.processing) }
                 }
 
@@ -145,18 +182,23 @@ class MainActivity : AppCompatActivity() {
                         SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> Pair("TIMEOUT", "Listening timed out. Tap mic and speak.")
                         else -> Pair("UNKNOWN_$error", "Recognition error ($error). Try again.")
                     }
-                    Log.w(TAG, "onError: type=$errorType, message=$userMessage")
+                    Log.w(TAG, "onError: code=$error, type=$errorType, message=$userMessage, isListening=$isListening, activeRoute=${getActiveAudioRoute()}")
                     runOnUiThread {
-                        binding.statusText.text = getString(R.string.tap_mic_to_speak)
-                        isListening = false
-                        isProcessing = false
-                        binding.micButton.setImageResource(android.R.drawable.ic_btn_speak_now)
+                        // Don't reset UI immediately for ERROR_SPEECH_TIMEOUT if we might still get results
+                        // Only reset if we're not currently processing or if it's a fatal error
+                        val isFatal = error != SpeechRecognizer.ERROR_SPEECH_TIMEOUT && error != SpeechRecognizer.ERROR_NO_MATCH
+                        if (isFatal || !isProcessing) {
+                            binding.statusText.text = getString(R.string.tap_mic_to_speak)
+                            isListening = false
+                            isProcessing = false
+                            binding.micButton.setImageResource(android.R.drawable.ic_btn_speak_now)
+                        }
                         Toast.makeText(this@MainActivity, userMessage, Toast.LENGTH_LONG).show()
                     }
                 }
 
                 override fun onResults(results: Bundle) {
-                    Log.d(TAG, "onResults received")
+                    Log.d(TAG, "onResults received, isProcessing=$isProcessing")
                     // Guard against duplicate processing
                     if (isProcessing) {
                         Log.w(TAG, "Duplicate onResults ignored")
@@ -203,6 +245,15 @@ class MainActivity : AppCompatActivity() {
         } else {
             binding.statusText.text = "Voice recognition not available"
             binding.micButton.isEnabled = false
+        }
+    }
+
+    private fun getActiveAudioRoute(): String {
+        return try {
+            val devices = audioManager?.getDevices(AudioManager.GET_DEVICES_INPUTS)
+            devices?.joinToString(", ") { "${it.typeName}(${it.type})" } ?: "none"
+        } catch (e: Exception) {
+            "error"
         }
     }
 
@@ -253,7 +304,7 @@ class MainActivity : AppCompatActivity() {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
                 putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak a command...")
                 putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-                // Max listening duration: 4 seconds total
+                // Max listening duration: 5 seconds total
                 putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, SILENCE_TIMEOUT_MS)
                 putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, SILENCE_TIMEOUT_MS)
                 putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 200)
@@ -262,7 +313,14 @@ class MainActivity : AppCompatActivity() {
             // Route audio to Bluetooth mic if available
             if (isBluetoothMicAvailable) {
                 val routed = routeAudioToBluetoothMic()
-                Log.d(TAG, "Bluetooth mic routing: $routed")
+                Log.d(TAG, "Bluetooth mic routing: $routed, activeRoute=${getActiveAudioRoute()}")
+                if (!routed) {
+                    Log.w(TAG, "Bluetooth routing failed, will use default phone mic")
+                    isBluetoothMicAvailable = false
+                }
+            } else {
+                // Ensure we clear any previous communication device selection
+                clearCommunicationDevice()
             }
 
             try {
@@ -271,7 +329,7 @@ class MainActivity : AppCompatActivity() {
                 isProcessing = false
                 binding.micButton.setImageResource(android.R.drawable.ic_media_pause)
                 binding.statusText.text = getString(R.string.listening)
-                Log.d(TAG, "startListening: maxDuration=${MAX_LISTENING_DURATION_MS}ms, silenceTimeout=${SILENCE_TIMEOUT_MS}ms")
+                Log.d(TAG, "startListening: maxDuration=${MAX_LISTENING_DURATION_MS}ms, silenceTimeout=${SILENCE_TIMEOUT_MS}ms, btAvailable=$isBluetoothMicAvailable, activeRoute=${getActiveAudioRoute()}")
             } catch (e: Exception) {
                 Log.e(TAG, "startListening error", e)
                 Toast.makeText(this, "Error starting voice recognition: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -290,7 +348,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun stopListening() {
+        Log.d(TAG, "stopListening called, isListening=$isListening, isProcessing=$isProcessing")
         speechRecognizer?.stopListening()
+        // Don't clear communication device here - let it persist for next use
+        // clearCommunicationDevice()
         resetToIdle()
     }
 
@@ -662,6 +723,8 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         speechRecognizer?.destroy()
         textToSpeech?.shutdown()
+        // Clear communication device selection on destroy
+        clearCommunicationDevice()
         super.onDestroy()
     }
 }
