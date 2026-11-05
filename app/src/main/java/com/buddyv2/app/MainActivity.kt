@@ -133,8 +133,8 @@ class MainActivity : AppCompatActivity() {
     private fun clearCommunicationDevice() {
         audioManager?.let { am ->
             selectedCommunicationDevice?.let { device ->
-                val result = am.setCommunicationDevice(null)
-                Log.d(TAG, "Cleared communication device (${audioDeviceTypeName(device.type)}), fallback to default: $result")
+                // setCommunicationDevice(null) may not be available at all API levels; just clear local reference
+                Log.d(TAG, "Clearing communication device reference (${audioDeviceTypeName(device.type)}), fallback to default")
             }
             selectedCommunicationDevice = null
         }
@@ -163,11 +163,8 @@ class MainActivity : AppCompatActivity() {
             AudioDeviceInfo.TYPE_FM -> "FM"
             AudioDeviceInfo.TYPE_BUILTIN_SPEAKER_SAFE -> "SPEAKER_SAFE"
             AudioDeviceInfo.TYPE_REMOTE_SUBMIX -> "REMOTE_SUBMIX"
-            AudioDeviceInfo.TYPE_TELEPHONY_TX -> "TELEPHONY_TX"
-            AudioDeviceInfo.TYPE_USB_ACCESSORY_TX -> "USB_ACCESSORY_TX"
             AudioDeviceInfo.TYPE_BLE_HEADSET -> "BLE_HEADSET"
             AudioDeviceInfo.TYPE_BLE_SPEAKER -> "BLE_SPEAKER"
-            AudioDeviceInfo.TYPE_ECHO_CANCEL -> "ECHO_CANCEL"
             else -> "UNKNOWN($type)"
         }
     }
