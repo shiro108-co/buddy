@@ -31,6 +31,7 @@ class MainActivity : AppCompatActivity() {
     private var speechRecognizer: SpeechRecognizer? = null
     private var textToSpeech: TextToSpeech? = null
     private var isListening = false
+    private var isProcessing = false  // Guard against duplicate processing
 
     private val permissions = arrayOf(
         Manifest.permission.RECORD_AUDIO,
@@ -80,25 +81,59 @@ class MainActivity : AppCompatActivity() {
                 override fun onRmsChanged(rmsdB: Float) {}
                 override fun onBufferReceived(buffer: ByteArray?) {}
                 override fun onEndOfSpeech() {
+                    // User stopped speaking - recognizer will finalize and call onResults()
                     runOnUiThread { binding.statusText.text = getString(R.string.processing) }
                 }
 
                 override fun onError(error: Int) {
+                    val errorMessage = when (error) {
+                        SpeechRecognizer.ERROR_AUDIO -> "Audio recording error"
+                        SpeechRecognizer.ERROR_CLIENT -> "Client side error"
+                        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Insufficient permissions"
+                        SpeechRecognizer.ERROR_NETWORK -> "Network error"
+                        SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network timeout"
+                        SpeechRecognizer.ERROR_NO_MATCH -> "No speech detected"
+                        SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Recognizer busy"
+                        SpeechRecognizer.ERROR_SERVER -> "Server error"
+                        SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "Speech timeout"
+                        else -> "Recognition error: $error"
+                    }
                     runOnUiThread {
                         binding.statusText.text = getString(R.string.tap_mic_to_speak)
                         isListening = false
+                        isProcessing = false
                         binding.micButton.setImageResource(android.R.drawable.ic_btn_speak_now)
+                        Toast.makeText(this@MainActivity, errorMessage, Toast.LENGTH_SHORT).show()
                     }
                 }
 
                 override fun onResults(results: Bundle) {
+                    // Guard against duplicate processing
+                    if (isProcessing) return
+                    isProcessing = true
+
                     val matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                    matches?.firstOrNull()?.let { command ->
-                        runOnUiThread { processVoiceCommand(command) }
+                    val command = matches?.firstOrNull()?.trim()
+
+                    if (command.isNullOrEmpty()) {
+                        runOnUiThread {
+                            binding.statusText.text = getString(R.string.tap_mic_to_speak)
+                            isListening = false
+                            isProcessing = false
+                            binding.micButton.setImageResource(android.R.drawable.ic_btn_speak_now)
+                            Toast.makeText(this@MainActivity, "No speech detected", Toast.LENGTH_SHORT).show()
+                        }
+                        isProcessing = false
+                        return
                     }
+
+                    runOnUiThread { processVoiceCommand(command!!) }
+
+                    // Reset UI after processing
                     runOnUiThread {
                         binding.statusText.text = getString(R.string.tap_mic_to_speak)
                         isListening = false
+                        isProcessing = false
                         binding.micButton.setImageResource(android.R.drawable.ic_btn_speak_now)
                     }
                 }
@@ -131,7 +166,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun toggleListening() {
-        if (isListening) {
+        if (isListening || isProcessing) {
             stopListening()
         } else {
             startListening()
@@ -152,6 +187,7 @@ class MainActivity : AppCompatActivity() {
             try {
                 recognizer.startListening(intent)
                 isListening = true
+                isProcessing = false
                 binding.micButton.setImageResource(android.R.drawable.ic_media_pause)
                 binding.statusText.text = getString(R.string.listening)
             } catch (e: Exception) {
@@ -163,6 +199,7 @@ class MainActivity : AppCompatActivity() {
     private fun stopListening() {
         speechRecognizer?.stopListening()
         isListening = false
+        isProcessing = false
         binding.micButton.setImageResource(android.R.drawable.ic_btn_speak_now)
         binding.statusText.text = getString(R.string.tap_mic_to_speak)
     }
