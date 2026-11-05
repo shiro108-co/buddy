@@ -54,103 +54,19 @@
         android:background="@drawable/rounded_bg"
         android:visibility="gone"/>
 
-    <!-- Mic Button -->
+    <!-- Mic Button - Moved to bottom, larger size -->
     <ImageButton
         android:id="@+id/micButton"
-        android:layout_width="80dp"
-        android:layout_height="80dp"
+        android:layout_width="120dp"
+        android:layout_height="120dp"
         android:src="@android:drawable/ic_btn_speak_now"
         android:background="@drawable/circle_bg"
         android:contentDescription="@string/mic_button_desc"
-        app:layout_constraintTop_toBottomOf="@id/commandText"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="32dp"
+        android:layout_marginBottom="48dp"
         android:scaleType="centerInside"
-        android:padding="16dp"/>
-
-    <!-- Quick Action Buttons -->
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/buttonGrid"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        app:layout_constraintTop_toBottomOf="@id/micButton"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="32dp">
-
-        <Button
-            android:id="@+id/openAppButton"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:text="@string/open_app"
-            android:backgroundTint="@color/primary"
-            android:textColor="@android:color/white"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toStartOf="@id/callButton"
-            app:layout_constraintBottom_toTopOf="@id/whatsappButton"
-            android:layout_marginEnd="8dp"
-            android:layout_marginBottom="8dp"/>
-
-        <Button
-            android:id="@+id/callButton"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:text="@string/make_call"
-            android:backgroundTint="@color/secondary"
-            android:textColor="@android:color/white"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintStart_toEndOf="@id/openAppButton"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintBottom_toTopOf="@id/searchButton"
-            android:layout_marginStart="8dp"
-            android:layout_marginBottom="8dp"/>
-
-        <Button
-            android:id="@+id/whatsappButton"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:text="@string/send_whatsapp"
-            android:backgroundTint="@color/accent"
-            android:textColor="@android:color/white"
-            app:layout_constraintTop_toBottomOf="@id/openAppButton"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toStartOf="@id/searchButton"
-            app:layout_constraintBottom_toBottomOf="parent"
-            android:layout_marginEnd="8dp"
-            android:layout_marginTop="8dp"/>
-
-        <Button
-            android:id="@+id/searchButton"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:text="@string/search_web"
-            android:backgroundTint="@color/tertiary"
-            android:textColor="@android:color/white"
-            app:layout_constraintTop_toBottomOf="@id/callButton"
-            app:layout_constraintStart_toEndOf="@id/whatsappButton"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent"
-            android:layout_marginStart="8dp"
-            android:layout_marginTop="8dp"/>
-
-    </androidx.constraintlayout.widget.ConstraintLayout>
-
-    <!-- Help Text -->
-    <TextView
-        android:id="@+id/helpText"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:text="@string/voice_commands_help"
-        android:textSize="12sp"
-        android:textColor="@color/secondary_text"
-        android:gravity="center"
-        android:lineSpacingExtra="4dp"
-        app:layout_constraintTop_toBottomOf="@id/buttonGrid"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="24dp"
-        android:padding="16dp"/>
+        android:padding="24dp"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

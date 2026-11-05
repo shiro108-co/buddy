@@ -1,0 +1,17 @@
+# Gradle build directories
+.gradle/
+build/
+app/build/
+
+# Local configuration
+local.properties
+*.iml
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
