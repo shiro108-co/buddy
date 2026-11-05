@@ -249,10 +249,10 @@ class MainActivity : AppCompatActivity() {
         val simpleWhatsAppMatch = "whatsapp\\s+(.+?)\\s+(.+)".toRegex().find(command)
         val simpleMessageMatch = "message\\s+(.+?)\\s+(.+)".toRegex().find(command)
 
-        return whatsappMatch?.let { (it.groupValues[1], it.groupValues[2]) }
-            ?: messageMatch?.let { (it.groupValues[1], it.groupValues[2]) }
-            ?: simpleWhatsAppMatch?.let { (it.groupValues[1], it.groupValues[2]) }
-            ?: simpleMessageMatch?.let { (it.groupValues[1], it.groupValues[2]) }
+        return whatsappMatch?.let { Pair(it.groupValues[1], it.groupValues[2]) }
+            ?: messageMatch?.let { Pair(it.groupValues[1], it.groupValues[2]) }
+            ?: simpleWhatsAppMatch?.let { Pair(it.groupValues[1], it.groupValues[2]) }
+            ?: simpleMessageMatch?.let { Pair(it.groupValues[1], it.groupValues[2]) }
     }
 
     private fun extractSearchQuery(command: String): String? {
