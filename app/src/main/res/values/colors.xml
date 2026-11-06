@@ -19,4 +19,10 @@
     <color name="on_surface">#212121</color>
     <color name="on_error">#FFFFFF</color>
     <color name="primary_alpha_10">#1A6200EE</color>
+
+    <!-- Command category colors -->
+    <color name="category_apps">#6200EE</color>
+    <color name="category_communication">#25D366</color>
+    <color name="category_search">#FF5722</color>
+    <color name="category_system">#757575</color>
 </resources>
