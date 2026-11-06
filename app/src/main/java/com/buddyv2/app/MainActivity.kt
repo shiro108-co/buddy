@@ -19,8 +19,6 @@ import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.WindowInsets
-import android.view.WindowInsetsController
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import android.widget.ImageButton
@@ -31,7 +29,6 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.buddyv2.app.databinding.ActivityMainBinding
 import java.util.Locale
@@ -92,8 +89,7 @@ class MainActivity : AppCompatActivity() {
 
             // Apply bottom padding to input container to keep it above keyboard/nav bar
             val bottomInset = maxOf(imeInsets.bottom, navBarsInsets.bottom)
-            ViewCompat.setPadding(
-                inputContainer,
+            inputContainer.setPadding(
                 inputContainer.paddingLeft,
                 inputContainer.paddingTop,
                 inputContainer.paddingRight,
@@ -101,8 +97,7 @@ class MainActivity : AppCompatActivity() {
             )
 
             // Also update the root view padding to handle system bars
-            ViewCompat.setPadding(
-                view,
+            view.setPadding(
                 view.paddingLeft,
                 view.paddingTop,
                 view.paddingRight,
