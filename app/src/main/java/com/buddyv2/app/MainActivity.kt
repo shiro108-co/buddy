@@ -92,7 +92,8 @@ class MainActivity : AppCompatActivity() {
 
             // Apply bottom padding to input container to keep it above keyboard/nav bar
             val bottomInset = maxOf(imeInsets.bottom, navBarsInsets.bottom)
-            inputContainer.updatePadding(
+            ViewCompat.setPadding(
+                inputContainer,
                 inputContainer.paddingLeft,
                 inputContainer.paddingTop,
                 inputContainer.paddingRight,
@@ -100,7 +101,8 @@ class MainActivity : AppCompatActivity() {
             )
 
             // Also update the root view padding to handle system bars
-            view.updatePadding(
+            ViewCompat.setPadding(
+                view,
                 view.paddingLeft,
                 view.paddingTop,
                 view.paddingRight,
@@ -112,11 +114,6 @@ class MainActivity : AppCompatActivity() {
             view.requestLayout()
 
             windowInsets
-        }
-
-        // For older Android versions, also set up a listener on the input container
-        inputContainer.doOnLayout { _, _, _, _, _, _, _, _, _ ->
-            // Layout pass happened, ensure we're not double-padded
         }
     }
 
