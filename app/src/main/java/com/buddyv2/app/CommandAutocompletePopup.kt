@@ -34,7 +34,7 @@ class CommandAutocompletePopup(
     private val allCommands = CommandRegistry.allCommands
 
     private inner class CommandAdapter(
-        private val commands: List<CommandRegistry.Command>
+        val commands: List<CommandRegistry.Command>
     ) : RecyclerView.Adapter<CommandAdapter.CommandViewHolder>() {
 
         inner class CommandViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -177,7 +177,8 @@ class CommandAutocompletePopup(
         currentQuery = ""
     }
 
-    fun isShowing: Boolean = popupWindow?.isShowing == true
+    val isShowing: Boolean
+        get() = popupWindow?.isShowing == true
 
     fun moveSelection(direction: Int) {
         val adapter = this.adapter
@@ -202,7 +203,7 @@ class CommandAutocompletePopup(
 
         val pos = layoutManager.findFirstVisibleItemPosition()
         if (pos != RecyclerView.NO_POSITION && pos < adapter.itemCount) {
-            val command = (adapter as CommandAdapter).commands[pos]
+            val command = adapter.commands[pos]
             onCommandSelected(command, atPosition, cursorPosition)
             dismiss()
         }
