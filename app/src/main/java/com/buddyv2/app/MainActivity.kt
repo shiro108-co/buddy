@@ -303,11 +303,11 @@ class MainActivity : AppCompatActivity() {
         // Clear input
         binding.commandInput.setText("")
 
-        // Show feedback
+        // Show "Sent:" feedback in commandText
         binding.commandText.text = "Sent: $trimmed"
         binding.commandText.visibility = View.VISIBLE
 
-        speak("Processing: $trimmed")
+        // Process command (no temporary "Processing..." message)
         processTextCommand(trimmed)
     }
 
@@ -339,8 +339,7 @@ class MainActivity : AppCompatActivity() {
             "help" -> showHelp(args)
             else -> {
                 val helpText = CommandRegistry.getHelp(trigger)
-                speak(helpText)
-                Toast.makeText(this, helpText, Toast.LENGTH_LONG).show()
+                showResult(helpText)
             }
         }
     }
@@ -358,8 +357,8 @@ class MainActivity : AppCompatActivity() {
                 extractSearchQuery(lowerCommand)?.let { searchWeb(it) }
             }
             else -> {
-                speak("Command not recognized. Try: /open app name, /call contact name, /whatsapp contact message, /search query, or /help")
-                Toast.makeText(this, "Command not recognized. Type /help for available commands.", Toast.LENGTH_LONG).show()
+                val msg = "Command not recognized. Try: /open app name, /call contact name, /whatsapp contact message, /search query, or /help"
+                showResult(msg)
             }
         }
     }
@@ -370,8 +369,23 @@ class MainActivity : AppCompatActivity() {
         } else {
             CommandRegistry.getHelp(topic.trim())
         }
-        speak(helpText)
-        Toast.makeText(this, helpText, Toast.LENGTH_LONG).show()
+        // Display help as conversation response under "Sent: /help" message
+        showResult(helpText)
+    }
+
+    private fun showResult(message: String) {
+        // Display result centered in commandText (replaces temporary status)
+        binding.commandText.text = message
+        binding.commandText.visibility = View.VISIBLE
+        // No Toast - result is shown in the conversation area
+    }
+
+    private fun showError(message: String) {
+        // Display error centered in commandText
+        binding.commandText.text = message
+        binding.commandText.visibility = View.VISIBLE
+        // Also show as Toast for immediate visibility of errors
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
     }
 
     private fun extractAppName(command: String): String? {
@@ -480,10 +494,9 @@ class MainActivity : AppCompatActivity() {
         targetActivity?.let {
             val launchIntent = packageManager.getLaunchIntentForPackage(it.activityInfo.packageName)
             launchIntent?.let { startActivity(it) }
-            speak("Opening ${it.loadLabel(packageManager)}")
+            showResult("Opened ${it.loadLabel(packageManager)}")
         } ?: run {
-            speak("App '$appName' not found")
-            Toast.makeText(this, "App '$appName' not found", Toast.LENGTH_LONG).show()
+            showError("App '$appName' not found")
         }
     }
 
@@ -493,19 +506,17 @@ class MainActivity : AppCompatActivity() {
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
             pendingCallNumber = null
             ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.READ_CONTACTS), CONTACTS_PERMISSION_REQUEST_CODE)
-            speak("Need contacts permission to find $contactName")
+            showError("Need contacts permission to find $contactName")
             return
         }
 
         val phoneNumber = findContactPhoneNumber(contactName)
         when {
             phoneNumber == null -> {
-                speak("Contact '$contactName' not found")
-                Toast.makeText(this, getString(R.string.contact_not_found, contactName), Toast.LENGTH_LONG).show()
+                showError("Contact '$contactName' not found")
             }
             phoneNumber == "AMBIGUOUS" -> {
-                speak("Multiple contacts match '$contactName'. Please be more specific.")
-                Toast.makeText(this, getString(R.string.multiple_contacts_found, contactName), Toast.LENGTH_LONG).show()
+                showError("Multiple contacts match '$contactName'. Please be more specific.")
             }
             else -> makeCall(phoneNumber)
         }
@@ -516,19 +527,17 @@ class MainActivity : AppCompatActivity() {
             pendingWhatsAppContact = contactName
             pendingWhatsAppMessage = message
             ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.READ_CONTACTS), CONTACTS_PERMISSION_REQUEST_CODE)
-            speak("Need contacts permission to find $contactName")
+            showError("Need contacts permission to find $contactName")
             return
         }
 
         val phoneNumber = findContactPhoneNumber(contactName)
         when {
             phoneNumber == null -> {
-                speak("Contact '$contactName' not found")
-                Toast.makeText(this, getString(R.string.contact_not_found, contactName), Toast.LENGTH_LONG).show()
+                showError("Contact '$contactName' not found")
             }
             phoneNumber == "AMBIGUOUS" -> {
-                speak("Multiple contacts match '$contactName'. Please be more specific.")
-                Toast.makeText(this, getString(R.string.multiple_contacts_found, contactName), Toast.LENGTH_LONG).show()
+                showError("Multiple contacts match '$contactName'. Please be more specific.")
             }
             else -> sendWhatsApp(phoneNumber, message)
         }
@@ -626,10 +635,9 @@ class MainActivity : AppCompatActivity() {
             val intent = Intent(Intent.ACTION_CALL, Uri.parse("tel:$phoneNumber"))
             try {
                 startActivity(intent)
-                speak("Calling $phoneNumber")
+                showResult("Calling $phoneNumber")
             } catch (e: ActivityNotFoundException) {
-                speak("Cannot make calls on this device")
-                Toast.makeText(this, "Cannot make calls", Toast.LENGTH_SHORT).show()
+                showError("Cannot make calls on this device")
             }
         } else {
             pendingCallNumber = phoneNumber
@@ -644,8 +652,7 @@ class MainActivity : AppCompatActivity() {
         } else if (packageManager.getLaunchIntentForPackage("com.whatsapp.w4b") != null) {
             "com.whatsapp.w4b"
         } else {
-            speak("WhatsApp not installed")
-            Toast.makeText(this, R.string.whatsapp_not_installed, Toast.LENGTH_SHORT).show()
+            showError("WhatsApp not installed")
             return
         }
 
@@ -660,10 +667,9 @@ class MainActivity : AppCompatActivity() {
 
         try {
             startActivity(intent)
-            speak("Opening WhatsApp for $phoneNumber")
+            showResult("Opening WhatsApp for $phoneNumber")
         } catch (e: ActivityNotFoundException) {
-            speak("Could not open WhatsApp")
-            Toast.makeText(this, "Could not open WhatsApp", Toast.LENGTH_SHORT).show()
+            showError("Could not open WhatsApp")
         }
     }
 
@@ -673,10 +679,9 @@ class MainActivity : AppCompatActivity() {
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
         try {
             startActivity(intent)
-            speak("Searching for $query")
+            showResult("Searching for $query")
         } catch (e: ActivityNotFoundException) {
-            speak("No browser available")
-            Toast.makeText(this, "No browser available", Toast.LENGTH_SHORT).show()
+            showError("No browser available")
         }
     }
 
@@ -690,8 +695,7 @@ class MainActivity : AppCompatActivity() {
                     pendingCallNumber?.let { makeCall(it) }
                     pendingCallNumber = null
                 } else {
-                    speak("Call permission denied")
-                    Toast.makeText(this, R.string.call_permission_denied, Toast.LENGTH_SHORT).show()
+                    showError("Call permission denied")
                 }
             }
             CONTACTS_PERMISSION_REQUEST_CODE -> {
@@ -705,16 +709,10 @@ class MainActivity : AppCompatActivity() {
                     pendingWhatsAppContact = null
                     pendingWhatsAppMessage = null
                 } else {
-                    speak("Contacts permission denied")
-                    Toast.makeText(this, R.string.permission_contacts_denied, Toast.LENGTH_SHORT).show()
+                    showError("Contacts permission denied")
                 }
             }
         }
-    }
-
-    private fun speak(text: String) {
-        // TextToSpeech removed - using Toast for feedback
-        Toast.makeText(this, text, Toast.LENGTH_SHORT).show()
     }
 
     override fun onDestroy() {
