@@ -78,9 +78,6 @@ class MainActivity : AppCompatActivity() {
         val rootView = binding.root
         val inputContainer = binding.inputContainer
 
-        // Use WindowInsetsControllerCompat for modern API (Android 11+)
-        val insetsController = WindowInsetsControllerCompat(window, rootView)
-
         // Set up listener for IME (keyboard) insets changes
         ViewCompat.setOnApplyWindowInsetsListener(rootView) { view, windowInsets ->
             val imeInsets = windowInsets.getInsets(WindowInsetsCompat.Type.ime())
