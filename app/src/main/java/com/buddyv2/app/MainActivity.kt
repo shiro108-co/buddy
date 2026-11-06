@@ -19,6 +19,8 @@ import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowInsets
+import android.view.WindowInsetsController
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import android.widget.ImageButton
@@ -27,6 +29,9 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.buddyv2.app.databinding.ActivityMainBinding
 import java.util.Locale
@@ -64,9 +69,55 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // Setup WindowInsets handling for keyboard (IME) positioning
+        setupWindowInsets()
+
         setupTextInput()
         setupClickListeners()
         checkPermissions()
+    }
+
+    private fun setupWindowInsets() {
+        val rootView = binding.root
+        val inputContainer = binding.inputContainer
+
+        // Use WindowInsetsControllerCompat for modern API (Android 11+)
+        val insetsController = WindowInsetsControllerCompat(window, rootView)
+
+        // Set up listener for IME (keyboard) insets changes
+        ViewCompat.setOnApplyWindowInsetsListener(rootView) { view, windowInsets ->
+            val imeInsets = windowInsets.getInsets(WindowInsetsCompat.Type.ime())
+            val systemBarsInsets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val navBarsInsets = windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars())
+
+            // Apply bottom padding to input container to keep it above keyboard/nav bar
+            val bottomInset = maxOf(imeInsets.bottom, navBarsInsets.bottom)
+            inputContainer.updatePadding(
+                inputContainer.paddingLeft,
+                inputContainer.paddingTop,
+                inputContainer.paddingRight,
+                bottomInset
+            )
+
+            // Also update the root view padding to handle system bars
+            view.updatePadding(
+                view.paddingLeft,
+                view.paddingTop,
+                view.paddingRight,
+                maxOf(view.paddingBottom, systemBarsInsets.bottom)
+            )
+
+            // Request layout to apply changes
+            inputContainer.requestLayout()
+            view.requestLayout()
+
+            windowInsets
+        }
+
+        // For older Android versions, also set up a listener on the input container
+        inputContainer.doOnLayout { _, _, _, _, _, _, _, _, _ ->
+            // Layout pass happened, ensure we're not double-padded
+        }
     }
 
     private fun setupTextInput() {
@@ -208,29 +259,26 @@ class MainActivity : AppCompatActivity() {
 
     private fun insertCommandSyntax(command: CommandRegistry.Command, atPosition: Int, cursorPosition: Int) {
         val input = binding.commandInput
-        val editable = input.text
-        val currentText = editable.toString()
+        val currentText = input.text.toString()
 
         // Calculate the range to replace: from @ to cursor
         val replaceStart = atPosition
         val replaceEnd = cursorPosition.coerceAtMost(currentText.length)
 
-        // Build the replacement text: command syntax without the trigger (since @ is already there)
-        // Actually, we want to replace @query with the full command syntax
-        // But the user might have typed something like "@ope" and selected "open <app name>"
-        // We should insert the full syntax, but preserve any text after the cursor
-
+        // Insert only the command trigger (e.g., "search") not the full syntax
+        // The user will then type their query after the command
         val afterText = if (replaceEnd < currentText.length) {
             currentText.substring(replaceEnd)
         } else {
             ""
         }
 
-        val newText = currentText.substring(0, replaceStart) + command.syntax + " " + afterText
+        val trigger = command.trigger
+        val newText = currentText.substring(0, replaceStart) + trigger + " " + afterText
         input.setText(newText)
 
-        // Position cursor after the inserted syntax
-        val newCursorPos = replaceStart + command.syntax.length + 1
+        // Position cursor after the inserted trigger
+        val newCursorPos = replaceStart + trigger.length + 1
         input.setSelection(newCursorPos.coerceAtMost(newText.length))
 
         deactivateAtTrigger()
@@ -283,6 +331,7 @@ class MainActivity : AppCompatActivity() {
             lowerCommand.contains("whatsapp") || lowerCommand.contains("message") -> {
                 extractContactAndMessage(lowerCommand)?.let { (contact, message) -> resolveAndSendWhatsApp(contact, message) }
             }
+            // Check for search commands - handle all aliases: search, google, look up, find
             lowerCommand.contains("search") || lowerCommand.contains("google") || lowerCommand.contains("look up") || lowerCommand.contains("find") -> {
                 extractSearchQuery(lowerCommand)?.let { searchWeb(it) }
             }
@@ -359,7 +408,7 @@ class MainActivity : AppCompatActivity() {
             "search\\s+for\\s+(.+)".toRegex(),
             "search\\s+(.+)".toRegex(),
             "google\\s+(.+)".toRegex(),
-            "look up\\s+(.+)".toRegex(),
+            "look\\s+up\\s+(.+)".toRegex(),
             "find\\s+(.+)".toRegex()
         )
         for (pattern in patterns) {

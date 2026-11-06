@@ -1,8 +1,8 @@
 1<?xml version="1.0" encoding="utf-8"?>
 2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
 3    package="com.buddyv2.app"
-4    android:versionCode="1"
-5    android:versionName="1.0" >
+4    android:versionCode="3"
+5    android:versionName="1.2" >
 6
 7    <uses-sdk
 8        android:minSdkVersion="24"
@@ -15,113 +15,112 @@
 13    <uses-permission android:name="android.permission.CALL_PHONE" />
 13-->/root/buddy-V2/app/src/main/AndroidManifest.xml:8:5-69
 13-->/root/buddy-V2/app/src/main/AndroidManifest.xml:8:22-66
-14    <uses-permission android:name="android.permission.RECORD_AUDIO" />
-14-->/root/buddy-V2/app/src/main/AndroidManifest.xml:9:5-71
-14-->/root/buddy-V2/app/src/main/AndroidManifest.xml:9:22-68
-15    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
-15-->/root/buddy-V2/app/src/main/AndroidManifest.xml:10:5-11:53
-15-->/root/buddy-V2/app/src/main/AndroidManifest.xml:10:22-74
-16    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
-16-->/root/buddy-V2/app/src/main/AndroidManifest.xml:12:5-13:47
-16-->/root/buddy-V2/app/src/main/AndroidManifest.xml:12:22-75
-17    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-17-->/root/buddy-V2/app/src/main/AndroidManifest.xml:14:5-78
-17-->/root/buddy-V2/app/src/main/AndroidManifest.xml:14:22-75
-18    <uses-permission android:name="android.permission.READ_CONTACTS" />
-18-->/root/buddy-V2/app/src/main/AndroidManifest.xml:15:5-72
-18-->/root/buddy-V2/app/src/main/AndroidManifest.xml:15:22-69
-19
-20    <queries>
-20-->/root/buddy-V2/app/src/main/AndroidManifest.xml:46:5-64:15
-21
-22        <!-- For opening apps -->
-23        <intent>
-23-->/root/buddy-V2/app/src/main/AndroidManifest.xml:48:9-51:18
-24            <action android:name="android.intent.action.MAIN" />
-24-->/root/buddy-V2/app/src/main/AndroidManifest.xml:36:17-69
-24-->/root/buddy-V2/app/src/main/AndroidManifest.xml:36:25-66
-25
-26            <category android:name="android.intent.category.LAUNCHER" />
-26-->/root/buddy-V2/app/src/main/AndroidManifest.xml:37:17-77
-26-->/root/buddy-V2/app/src/main/AndroidManifest.xml:37:27-74
-27        </intent>
-28        <!-- For WhatsApp -->
-29        <package android:name="com.whatsapp" />
-29-->/root/buddy-V2/app/src/main/AndroidManifest.xml:53:9-48
-29-->/root/buddy-V2/app/src/main/AndroidManifest.xml:53:18-45
-30        <package android:name="com.whatsapp.w4b" />
-30-->/root/buddy-V2/app/src/main/AndroidManifest.xml:54:9-52
-30-->/root/buddy-V2/app/src/main/AndroidManifest.xml:54:18-49
-31        <!-- For browser -->
-32        <intent>
-32-->/root/buddy-V2/app/src/main/AndroidManifest.xml:56:9-59:18
-33            <action android:name="android.intent.action.VIEW" />
-33-->/root/buddy-V2/app/src/main/AndroidManifest.xml:57:13-65
-33-->/root/buddy-V2/app/src/main/AndroidManifest.xml:57:21-62
-34
-35            <data android:scheme="https" />
-35-->/root/buddy-V2/app/src/main/AndroidManifest.xml:58:13-44
-35-->/root/buddy-V2/app/src/main/AndroidManifest.xml:58:19-41
-36        </intent>
-37        <intent>
-37-->/root/buddy-V2/app/src/main/AndroidManifest.xml:60:9-63:18
-38            <action android:name="android.intent.action.VIEW" />
-38-->/root/buddy-V2/app/src/main/AndroidManifest.xml:57:13-65
-38-->/root/buddy-V2/app/src/main/AndroidManifest.xml:57:21-62
-39
-40            <data android:scheme="http" />
-40-->/root/buddy-V2/app/src/main/AndroidManifest.xml:58:13-44
-40-->/root/buddy-V2/app/src/main/AndroidManifest.xml:58:19-41
-41        </intent>
-42    </queries>
-43
-44    <permission
-44-->[androidx.core:core:1.13.1] /root/.gradle/caches/transforms-4/4a68c54374c8400134b1f715352a6d7a/transformed/core-1.13.1/AndroidManifest.xml:22:5-24:47
-45        android:name="com.buddyv2.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
-45-->[androidx.core:core:1.13.1] /root/.gradle/caches/transforms-4/4a68c54374c8400134b1f715352a6d7a/transformed/core-1.13.1/AndroidManifest.xml:23:9-81
-46        android:protectionLevel="signature" />
-46-->[androidx.core:core:1.13.1] /root/.gradle/caches/transforms-4/4a68c54374c8400134b1f715352a6d7a/transformed/core-1.13.1/AndroidManifest.xml:24:9-44
-47
-48    <uses-permission android:name="com.buddyv2.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
-48-->[androidx.core:core:1.13.1] /root/.gradle/caches/transforms-4/4a68c54374c8400134b1f715352a6d7a/transformed/core-1.13.1/AndroidManifest.xml:26:5-97
-48-->[androidx.core:core:1.13.1] /root/.gradle/caches/transforms-4/4a68c54374c8400134b1f715352a6d7a/transformed/core-1.13.1/AndroidManifest.xml:26:22-94
-49
-50    <application
-50-->/root/buddy-V2/app/src/main/AndroidManifest.xml:17:5-44:19
-51        android:name="com.buddyv2.app.BuddyApplication"
-51-->/root/buddy-V2/app/src/main/AndroidManifest.xml:18:9-41
-52        android:allowBackup="true"
-52-->/root/buddy-V2/app/src/main/AndroidManifest.xml:19:9-35
-53        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
-53-->[androidx.core:core:1.13.1] /root/.gradle/caches/transforms-4/4a68c54374c8400134b1f715352a6d7a/transformed/core-1.13.1/AndroidManifest.xml:28:18-86
-54        android:dataExtractionRules="@xml/data_extraction_rules"
-54-->/root/buddy-V2/app/src/main/AndroidManifest.xml:20:9-65
-55        android:debuggable="true"
-56        android:extractNativeLibs="false"
-57        android:fullBackupContent="@xml/backup_rules"
-57-->/root/buddy-V2/app/src/main/AndroidManifest.xml:21:9-54
-58        android:icon="@drawable/circle_bg"
-58-->/root/buddy-V2/app/src/main/AndroidManifest.xml:22:9-43
-59        android:label="@string/app_name"
-59-->/root/buddy-V2/app/src/main/AndroidManifest.xml:23:9-41
-60        android:roundIcon="@drawable/circle_bg"
-60-->/root/buddy-V2/app/src/main/AndroidManifest.xml:24:9-48
-61        android:supportsRtl="true"
-61-->/root/buddy-V2/app/src/main/AndroidManifest.xml:25:9-35
-62        android:theme="@style/Theme.BuddyV2" >
-62-->/root/buddy-V2/app/src/main/AndroidManifest.xml:26:9-45
-63        <activity
-63-->/root/buddy-V2/app/src/main/AndroidManifest.xml:29:9-39:20
-64            android:name="com.buddyv2.app.MainActivity"
-64-->/root/buddy-V2/app/src/main/AndroidManifest.xml:30:13-41
-65            android:exported="true"
-65-->/root/buddy-V2/app/src/main/AndroidManifest.xml:31:13-36
-66            android:label="@string/app_name"
-66-->/root/buddy-V2/app/src/main/AndroidManifest.xml:32:13-45
-67            android:launchMode="singleTop"
-67-->/root/buddy-V2/app/src/main/AndroidManifest.xml:33:13-43
-68            android:theme="@style/Theme.BuddyV2.NoActionBar" >
-68-->/root/buddy-V2/app/src/main/AndroidManifest.xml:34:13-61
+14    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+14-->/root/buddy-V2/app/src/main/AndroidManifest.xml:9:5-10:53
+14-->/root/buddy-V2/app/src/main/AndroidManifest.xml:9:22-74
+15    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
+15-->/root/buddy-V2/app/src/main/AndroidManifest.xml:11:5-12:47
+15-->/root/buddy-V2/app/src/main/AndroidManifest.xml:11:22-75
+16    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+16-->/root/buddy-V2/app/src/main/AndroidManifest.xml:13:5-78
+16-->/root/buddy-V2/app/src/main/AndroidManifest.xml:13:22-75
+17    <uses-permission android:name="android.permission.READ_CONTACTS" />
+17-->/root/buddy-V2/app/src/main/AndroidManifest.xml:14:5-72
+17-->/root/buddy-V2/app/src/main/AndroidManifest.xml:14:22-69
+18
+19    <queries>
+19-->/root/buddy-V2/app/src/main/AndroidManifest.xml:46:5-64:15
+20
+21        <!-- For opening apps -->
+22        <intent>
+22-->/root/buddy-V2/app/src/main/AndroidManifest.xml:48:9-51:18
+23            <action android:name="android.intent.action.MAIN" />
+23-->/root/buddy-V2/app/src/main/AndroidManifest.xml:36:17-69
+23-->/root/buddy-V2/app/src/main/AndroidManifest.xml:36:25-66
+24
+25            <category android:name="android.intent.category.LAUNCHER" />
+25-->/root/buddy-V2/app/src/main/AndroidManifest.xml:37:17-77
+25-->/root/buddy-V2/app/src/main/AndroidManifest.xml:37:27-74
+26        </intent>
+27        <!-- For WhatsApp -->
+28        <package android:name="com.whatsapp" />
+28-->/root/buddy-V2/app/src/main/AndroidManifest.xml:53:9-48
+28-->/root/buddy-V2/app/src/main/AndroidManifest.xml:53:18-45
+29        <package android:name="com.whatsapp.w4b" />
+29-->/root/buddy-V2/app/src/main/AndroidManifest.xml:54:9-52
+29-->/root/buddy-V2/app/src/main/AndroidManifest.xml:54:18-49
+30        <!-- For browser -->
+31        <intent>
+31-->/root/buddy-V2/app/src/main/AndroidManifest.xml:56:9-59:18
+32            <action android:name="android.intent.action.VIEW" />
+32-->/root/buddy-V2/app/src/main/AndroidManifest.xml:57:13-65
+32-->/root/buddy-V2/app/src/main/AndroidManifest.xml:57:21-62
+33
+34            <data android:scheme="https" />
+34-->/root/buddy-V2/app/src/main/AndroidManifest.xml:58:13-44
+34-->/root/buddy-V2/app/src/main/AndroidManifest.xml:58:19-41
+35        </intent>
+36        <intent>
+36-->/root/buddy-V2/app/src/main/AndroidManifest.xml:60:9-63:18
+37            <action android:name="android.intent.action.VIEW" />
+37-->/root/buddy-V2/app/src/main/AndroidManifest.xml:57:13-65
+37-->/root/buddy-V2/app/src/main/AndroidManifest.xml:57:21-62
+38
+39            <data android:scheme="http" />
+39-->/root/buddy-V2/app/src/main/AndroidManifest.xml:58:13-44
+39-->/root/buddy-V2/app/src/main/AndroidManifest.xml:58:19-41
+40        </intent>
+41    </queries>
+42
+43    <permission
+43-->[androidx.core:core:1.13.1] /root/.gradle/caches/transforms-4/4a68c54374c8400134b1f715352a6d7a/transformed/core-1.13.1/AndroidManifest.xml:22:5-24:47
+44        android:name="com.buddyv2.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+44-->[androidx.core:core:1.13.1] /root/.gradle/caches/transforms-4/4a68c54374c8400134b1f715352a6d7a/transformed/core-1.13.1/AndroidManifest.xml:23:9-81
+45        android:protectionLevel="signature" />
+45-->[androidx.core:core:1.13.1] /root/.gradle/caches/transforms-4/4a68c54374c8400134b1f715352a6d7a/transformed/core-1.13.1/AndroidManifest.xml:24:9-44
+46
+47    <uses-permission android:name="com.buddyv2.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+47-->[androidx.core:core:1.13.1] /root/.gradle/caches/transforms-4/4a68c54374c8400134b1f715352a6d7a/transformed/core-1.13.1/AndroidManifest.xml:26:5-97
+47-->[androidx.core:core:1.13.1] /root/.gradle/caches/transforms-4/4a68c54374c8400134b1f715352a6d7a/transformed/core-1.13.1/AndroidManifest.xml:26:22-94
+48
+49    <application
+49-->/root/buddy-V2/app/src/main/AndroidManifest.xml:16:5-44:19
+50        android:name="com.buddyv2.app.BuddyApplication"
+50-->/root/buddy-V2/app/src/main/AndroidManifest.xml:17:9-41
+51        android:allowBackup="true"
+51-->/root/buddy-V2/app/src/main/AndroidManifest.xml:18:9-35
+52        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+52-->[androidx.core:core:1.13.1] /root/.gradle/caches/transforms-4/4a68c54374c8400134b1f715352a6d7a/transformed/core-1.13.1/AndroidManifest.xml:28:18-86
+53        android:dataExtractionRules="@xml/data_extraction_rules"
+53-->/root/buddy-V2/app/src/main/AndroidManifest.xml:19:9-65
+54        android:debuggable="true"
+55        android:extractNativeLibs="false"
+56        android:fullBackupContent="@xml/backup_rules"
+56-->/root/buddy-V2/app/src/main/AndroidManifest.xml:20:9-54
+57        android:icon="@drawable/circle_bg"
+57-->/root/buddy-V2/app/src/main/AndroidManifest.xml:21:9-43
+58        android:label="@string/app_name"
+58-->/root/buddy-V2/app/src/main/AndroidManifest.xml:22:9-41
+59        android:roundIcon="@drawable/circle_bg"
+59-->/root/buddy-V2/app/src/main/AndroidManifest.xml:23:9-48
+60        android:supportsRtl="true"
+60-->/root/buddy-V2/app/src/main/AndroidManifest.xml:24:9-35
+61        android:theme="@style/Theme.BuddyV2" >
+61-->/root/buddy-V2/app/src/main/AndroidManifest.xml:25:9-45
+62        <activity
+62-->/root/buddy-V2/app/src/main/AndroidManifest.xml:28:9-39:20
+63            android:name="com.buddyv2.app.MainActivity"
+63-->/root/buddy-V2/app/src/main/AndroidManifest.xml:29:13-41
+64            android:exported="true"
+64-->/root/buddy-V2/app/src/main/AndroidManifest.xml:30:13-36
+65            android:label="@string/app_name"
+65-->/root/buddy-V2/app/src/main/AndroidManifest.xml:31:13-45
+66            android:launchMode="singleTop"
+66-->/root/buddy-V2/app/src/main/AndroidManifest.xml:32:13-43
+67            android:theme="@style/Theme.BuddyV2.NoActionBar"
+67-->/root/buddy-V2/app/src/main/AndroidManifest.xml:33:13-61
+68            android:windowSoftInputMode="adjustResize" >
+68-->/root/buddy-V2/app/src/main/AndroidManifest.xml:34:13-55
 69            <intent-filter>
 69-->/root/buddy-V2/app/src/main/AndroidManifest.xml:35:13-38:29
 70                <action android:name="android.intent.action.MAIN" />

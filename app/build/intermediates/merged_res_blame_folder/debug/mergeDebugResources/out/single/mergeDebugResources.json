@@ -1,26 +1,38 @@
 [
     {
-        "merged": "/root/.gradle/daemon/8.7/com.buddyv2.app-debug-37:/layout_activity_main.xml.flat",
-        "source": "/root/.gradle/daemon/8.7/com.buddyv2.app-main-39:/layout/activity_main.xml"
+        "merged": "com.buddyv2.app-debug-37:/drawable_circle_bg.xml.flat",
+        "source": "com.buddyv2.app-main-39:/drawable/circle_bg.xml"
     },
     {
-        "merged": "/root/.gradle/daemon/8.7/com.buddyv2.app-debug-37:/xml_data_extraction_rules.xml.flat",
-        "source": "/root/.gradle/daemon/8.7/com.buddyv2.app-main-39:/xml/data_extraction_rules.xml"
+        "merged": "com.buddyv2.app-debug-37:/drawable_autocomplete_bg.xml.flat",
+        "source": "com.buddyv2.app-main-39:/drawable/autocomplete_bg.xml"
     },
     {
-        "merged": "/root/.gradle/daemon/8.7/com.buddyv2.app-debug-37:/drawable_circle_bg.xml.flat",
-        "source": "/root/.gradle/daemon/8.7/com.buddyv2.app-main-39:/drawable/circle_bg.xml"
+        "merged": "com.buddyv2.app-debug-37:/layout_item_command_suggestion.xml.flat",
+        "source": "com.buddyv2.app-main-39:/layout/item_command_suggestion.xml"
     },
     {
-        "merged": "/root/.gradle/daemon/8.7/com.buddyv2.app-debug-37:/drawable_rounded_bg.xml.flat",
-        "source": "/root/.gradle/daemon/8.7/com.buddyv2.app-main-39:/drawable/rounded_bg.xml"
+        "merged": "com.buddyv2.app-debug-37:/xml_data_extraction_rules.xml.flat",
+        "source": "com.buddyv2.app-main-39:/xml/data_extraction_rules.xml"
     },
     {
-        "merged": "/root/.gradle/daemon/8.7/com.buddyv2.app-debug-37:/xml_backup_rules.xml.flat",
-        "source": "/root/.gradle/daemon/8.7/com.buddyv2.app-main-39:/xml/backup_rules.xml"
+        "merged": "com.buddyv2.app-debug-37:/xml_backup_rules.xml.flat",
+        "source": "com.buddyv2.app-main-39:/xml/backup_rules.xml"
+    },
+    {
+        "merged": "com.buddyv2.app-debug-37:/drawable_rounded_bg.xml.flat",
+        "source": "com.buddyv2.app-main-39:/drawable/rounded_bg.xml"
     },
     {
         "merged": "com.buddyv2.app-debug-37:/layout_activity_main.xml.flat",
         "source": "com.buddyv2.app-main-39:/layout/activity_main.xml"
+    },
+    {
+        "merged": "com.buddyv2.app-debug-37:/drawable_suggestion_item_bg.xml.flat",
+        "source": "com.buddyv2.app-main-39:/drawable/suggestion_item_bg.xml"
+    },
+    {
+        "merged": "com.buddyv2.app-debug-37:/drawable_category_chip_bg.xml.flat",
+        "source": "com.buddyv2.app-main-39:/drawable/category_chip_bg.xml"
     }
 ]

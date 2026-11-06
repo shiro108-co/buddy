@@ -2,6 +2,7 @@ package com.buddyv2.app
 
 import android.content.Context
 import android.graphics.Rect
+import android.util.DisplayMetrics
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -17,6 +18,7 @@ import androidx.core.content.ContextCompat
 /**
  * Floating autocomplete popup for @ command suggestions.
  * Appears above the input field when user types @.
+ * Compact with max height, scrollable, smooth animations.
  */
 class CommandAutocompletePopup(
     private val context: Context,
@@ -32,6 +34,11 @@ class CommandAutocompletePopup(
     private var atPosition = -1
     private var cursorPosition = -1
     private val allCommands = CommandRegistry.allCommands
+
+    // Compact sizing constants (in dp)
+    private val MAX_HEIGHT_DP = 280
+    private val ITEM_HEIGHT_DP = 56
+    private val GAP_ABOVE_INPUT_DP = 8
 
     private inner class CommandAdapter(
         val commands: List<CommandRegistry.Command>
@@ -68,12 +75,12 @@ class CommandAutocompletePopup(
 
             // Staggered animation
             holder.itemView.alpha = 0f
-            holder.itemView.translationY = 20f
+            holder.itemView.translationY = 10f
             holder.itemView.animate()
                 .alpha(1f)
                 .translationY(0f)
-                .setDuration(150)
-                .setStartDelay(position * 30L)
+                .setDuration(120)
+                .setStartDelay(position * 20L)
                 .start()
         }
 
@@ -97,6 +104,8 @@ class CommandAutocompletePopup(
             layoutManager = LinearLayoutManager(context)
             adapter = CommandAdapter(filteredCommands).also { adapter = it }
             setBackgroundResource(R.drawable.autocomplete_bg)
+            // Enable nested scrolling for smooth scrolling
+            isNestedScrollingEnabled = true
         }
 
         // Create PopupWindow
@@ -111,6 +120,8 @@ class CommandAutocompletePopup(
             setClippingEnabled(false)
             isOutsideTouchable = true
             setOnDismissListener { onDismiss() }
+            // Smooth show animation
+            setAnimationStyle(android.R.style.Animation_Dialog)
         }
 
         // Position popup above anchor view
@@ -137,21 +148,41 @@ class CommandAutocompletePopup(
         val anchorRect = Rect()
         anchorView.getGlobalVisibleRect(anchorRect)
 
-        val popupRect = Rect()
-        recyclerView?.getDrawingRect(popupRect)
+        // Get screen dimensions
+        val displayMetrics = DisplayMetrics()
+        (context.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager)
+            .defaultDisplay.getRealMetrics(displayMetrics)
+        val screenHeight = displayMetrics.heightPixels
 
-        // Measure the recycler view to get its height
-        recyclerView?.measure(
-            View.MeasureSpec.makeMeasureSpec(anchorView.width, View.MeasureSpec.EXACTLY),
-            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-        )
+        // Measure the recycler view with max height constraint
+        val maxHeightPx = dpToPx(MAX_HEIGHT_DP)
+        val widthSpec = View.MeasureSpec.makeMeasureSpec(anchorView.width, View.MeasureSpec.EXACTLY)
+        val heightSpec = View.MeasureSpec.makeMeasureSpec(maxHeightPx, View.MeasureSpec.AT_MOST)
+
+        recyclerView?.measure(widthSpec, heightSpec)
         val popupHeight = recyclerView?.measuredHeight ?: 0
 
         // Position above the anchor view
         val x = anchorRect.left
-        val y = anchorRect.top - popupHeight - 8 // 8dp gap
+        var y = anchorRect.top - popupHeight - dpToPx(GAP_ABOVE_INPUT_DP)
+
+        // Ensure popup doesn't go off-screen at top
+        if (y < 0) {
+            y = dpToPx(GAP_ABOVE_INPUT_DP) // Show below input if not enough space above
+        }
+
+        // Ensure popup doesn't go off-screen at bottom (behind keyboard/nav bar)
+        val popupBottom = y + popupHeight
+        if (popupBottom > screenHeight) {
+            y = screenHeight - popupHeight - dpToPx(GAP_ABOVE_INPUT_DP)
+            if (y < 0) y = 0
+        }
 
         popupWindow?.update(x, y, anchorView.width, popupHeight)
+    }
+
+    private fun dpToPx(dp: Int): Int {
+        return (dp * context.resources.displayMetrics.density).toInt()
     }
 
     fun updateQuery(query: String) {

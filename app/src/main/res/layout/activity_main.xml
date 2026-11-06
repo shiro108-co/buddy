@@ -5,7 +5,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="16dp"
+    android:fitsSystemWindows="true"
     tools:context=".MainActivity">
 
     <!-- Title -->
@@ -82,7 +82,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginBottom="24dp">
+        android:layout_marginBottom="16dp">
 
         <EditText
             android:id="@+id/commandInput"
@@ -96,7 +96,8 @@
             android:background="@android:color/transparent"
             android:maxLines="1"
             android:inputType="text"
-            android:imeOptions="actionSend"/>
+            android:imeOptions="actionSend"
+            android:windowSoftInputMode="adjustResize"/>
 
         <ImageButton
             android:id="@+id/sendButton"

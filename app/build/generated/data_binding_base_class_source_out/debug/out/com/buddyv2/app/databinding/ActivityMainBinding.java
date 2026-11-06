@@ -4,7 +4,9 @@ package com.buddyv2.app.databinding;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -21,10 +23,19 @@ public final class ActivityMainBinding implements ViewBinding {
   private final ConstraintLayout rootView;
 
   @NonNull
+  public final EditText commandInput;
+
+  @NonNull
   public final TextView commandText;
 
   @NonNull
-  public final ImageButton micButton;
+  public final TextView helpText;
+
+  @NonNull
+  public final LinearLayout inputContainer;
+
+  @NonNull
+  public final ImageButton sendButton;
 
   @NonNull
   public final TextView statusText;
@@ -32,11 +43,16 @@ public final class ActivityMainBinding implements ViewBinding {
   @NonNull
   public final TextView titleText;
 
-  private ActivityMainBinding(@NonNull ConstraintLayout rootView, @NonNull TextView commandText,
-      @NonNull ImageButton micButton, @NonNull TextView statusText, @NonNull TextView titleText) {
+  private ActivityMainBinding(@NonNull ConstraintLayout rootView, @NonNull EditText commandInput,
+      @NonNull TextView commandText, @NonNull TextView helpText,
+      @NonNull LinearLayout inputContainer, @NonNull ImageButton sendButton,
+      @NonNull TextView statusText, @NonNull TextView titleText) {
     this.rootView = rootView;
+    this.commandInput = commandInput;
     this.commandText = commandText;
-    this.micButton = micButton;
+    this.helpText = helpText;
+    this.inputContainer = inputContainer;
+    this.sendButton = sendButton;
     this.statusText = statusText;
     this.titleText = titleText;
   }
@@ -68,15 +84,33 @@ public final class ActivityMainBinding implements ViewBinding {
     // This is done to optimize the compiled bytecode for size and performance.
     int id;
     missingId: {
+      id = R.id.commandInput;
+      EditText commandInput = ViewBindings.findChildViewById(rootView, id);
+      if (commandInput == null) {
+        break missingId;
+      }
+
       id = R.id.commandText;
       TextView commandText = ViewBindings.findChildViewById(rootView, id);
       if (commandText == null) {
         break missingId;
       }
 
-      id = R.id.micButton;
-      ImageButton micButton = ViewBindings.findChildViewById(rootView, id);
-      if (micButton == null) {
+      id = R.id.helpText;
+      TextView helpText = ViewBindings.findChildViewById(rootView, id);
+      if (helpText == null) {
+        break missingId;
+      }
+
+      id = R.id.inputContainer;
+      LinearLayout inputContainer = ViewBindings.findChildViewById(rootView, id);
+      if (inputContainer == null) {
+        break missingId;
+      }
+
+      id = R.id.sendButton;
+      ImageButton sendButton = ViewBindings.findChildViewById(rootView, id);
+      if (sendButton == null) {
         break missingId;
       }
 
@@ -92,8 +126,8 @@ public final class ActivityMainBinding implements ViewBinding {
         break missingId;
       }
 
-      return new ActivityMainBinding((ConstraintLayout) rootView, commandText, micButton,
-          statusText, titleText);
+      return new ActivityMainBinding((ConstraintLayout) rootView, commandInput, commandText,
+          helpText, inputContainer, sendButton, statusText, titleText);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

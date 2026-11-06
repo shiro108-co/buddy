@@ -10,6 +10,7 @@
     <color name="on_surface">#212121</color>
     <color name="outline">#E0E0E0</color>
     <color name="primary">#6200EE</color>
+    <color name="primary_alpha_10">#1A6200EE</color>
     <color name="primary_text">#212121</color>
     <color name="primary_variant">#3700B3</color>
     <color name="secondary">#03DAC5</color>
@@ -19,17 +20,17 @@
     <color name="surface_variant">#F5F5F5</color>
     <color name="tertiary">#FF5722</color>
     <string name="app_name">Buddy V2</string>
+    <string name="autocomplete_hint">Type @ to see available commands</string>
     <string name="call_permission_denied">Call permission denied.</string>
     <string name="contact_has_no_number">Contact "%s" has no phone number.</string>
     <string name="contact_not_found">Contact "%s" not found.</string>
+    <string name="enter_command">Enter a command</string>
     <string name="error_occurred">Error: %s</string>
-    <string name="listening">Listening…</string>
-    <string name="mic_button_desc">Voice command button</string>
     <string name="multiple_contacts_found">Multiple contacts match "%s". Please be more specific.</string>
     <string name="permission_contacts_denied">Contacts permission denied. Cannot resolve contact names.</string>
     <string name="permission_contacts_rationale">Contacts permission is required to call or message people by name.</string>
-    <string name="processing">Processing…</string>
-    <string name="tap_mic_to_speak">Tap mic to speak</string>
+    <string name="send_button_desc">Send command</string>
+    <string name="type_command_hint">Type a command (e.g., open chrome, call mom, whatsapp john hello, search weather)</string>
     <string name="whatsapp_not_installed">WhatsApp is not installed.</string>
     <style name="Theme.BuddyV2" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
         <item name="colorPrimary">@color/primary</item>

@@ -3,39 +3,40 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:layout_marginHorizontal="12dp"
-    android:layout_marginVertical="4dp"
+    android:layout_height="56dp"
+    android:layout_marginHorizontal="8dp"
+    android:layout_marginVertical="2dp"
     android:clickable="true"
     android:focusable="true"
     android:foreground="?attr/selectableItemBackground"
-    app:cardCornerRadius="12dp"
+    app:cardCornerRadius="8dp"
     app:cardElevation="0dp"
     app:cardBackgroundColor="@color/surface"
     app:cardUseCompatPadding="true">
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:orientation="horizontal"
-        android:padding="12dp"
+        android:padding="8dp"
         android:gravity="center_vertical">
 
         <!-- Icon -->
         <ImageView
             android:id="@+id/cmdIcon"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
             android:scaleType="centerInside"
-            android:layout_marginEnd="12dp"/>
+            android:layout_marginEnd="10dp"/>
 
         <!-- Content -->
         <LinearLayout
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
             android:orientation="vertical"
-            android:paddingVertical="4dp">
+            android:gravity="center_vertical"
+            android:paddingVertical="2dp">
 
             <!-- Name and Category -->
             <LinearLayout
@@ -49,7 +50,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:textSize="15sp"
+                    android:textSize="14sp"
                     android:textStyle="bold"
                     android:textColor="@color/primary_text"
                     android:ellipsize="end"
@@ -59,12 +60,12 @@
                     android:id="@+id/cmdCategory"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="11sp"
+                    android:textSize="10sp"
                     android:textColor="@color/secondary_text"
                     android:background="@drawable/category_chip_bg"
-                    android:paddingHorizontal="8dp"
-                    android:paddingVertical="2dp"
-                    android:layout_marginStart="8dp"/>
+                    android:paddingHorizontal="6dp"
+                    android:paddingVertical="1dp"
+                    android:layout_marginStart="6dp"/>
             </LinearLayout>
 
             <!-- Syntax and Description -->
@@ -72,13 +73,13 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:layout_marginTop="2dp">
+                android:layout_marginTop="1dp">
 
                 <TextView
                     android:id="@+id/cmdSyntax"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:textSize="12sp"
+                    android:textSize="11sp"
                     android:textColor="@color/primary"
                     android:fontFamily="monospace"
                     android:ellipsize="end"
@@ -88,11 +89,11 @@
                     android:id="@+id/cmdDescription"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:textSize="12sp"
+                    android:textSize="11sp"
                     android:textColor="@color/secondary_text"
                     android:ellipsize="end"
                     android:maxLines="1"
-                    android:layout_marginTop="1dp"/>
+                    android:layout_marginTop="0dp"/>
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>

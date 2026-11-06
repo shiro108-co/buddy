@@ -97,40 +97,13 @@ object CommandRegistry {
 
         // Search
         Command(
-            id = "search_web",
-            name = "Search Web",
+            id = "search",
+            name = "Search",
             syntax = "search <query>",
-            description = "Search the web via Google",
+            description = "Search the web via Google (aliases: google, look up, find)",
             iconRes = android.R.drawable.ic_menu_search,
             category = Category.SEARCH,
             example = "search weather today"
-        ),
-        Command(
-            id = "google_search",
-            name = "Google Search",
-            syntax = "google <query>",
-            description = "Search the web via Google (alias)",
-            iconRes = android.R.drawable.ic_menu_search,
-            category = Category.SEARCH,
-            example = "google android tips"
-        ),
-        Command(
-            id = "lookup_search",
-            name = "Look Up",
-            syntax = "look up <query>",
-            description = "Search the web (alias)",
-            iconRes = android.R.drawable.ic_menu_search,
-            category = Category.SEARCH,
-            example = "look up pizza near me"
-        ),
-        Command(
-            id = "find_search",
-            name = "Find",
-            syntax = "find <query>",
-            description = "Search the web (alias)",
-            iconRes = android.R.drawable.ic_menu_search,
-            category = Category.SEARCH,
-            example = "find best restaurants"
         )
     )
 
