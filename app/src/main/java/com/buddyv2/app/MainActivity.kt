@@ -447,16 +447,182 @@ class MainActivity : AppCompatActivity() {
         return null
     }
 
+    /**
+     * Extracts contact name and message from a WhatsApp command using contact-aware parsing.
+     * Matches the longest valid contact name from the start of the input against saved contacts.
+     * Everything after the matched contact name becomes the message.
+     * Returns null if no contact matches (triggers contact-not-found error upstream).
+     */
     private fun extractContactAndMessage(command: String): Pair<String, String>? {
-        val whatsappMatch = "whatsapp\\s+(.+?)\\s*(?:,|\\s+)(?:tell\\s+(?:him|her|them)\\s+)?(.+)".toRegex().find(command)
-        val messageMatch = "message\\s+(.+?)\\s*(?:,|\\s+)(?:tell\\s+(?:him|her|them)\\s+)?(.+)".toRegex().find(command)
-        val simpleWhatsAppMatch = "whatsapp\\s+(.+?)\\s+(.+)".toRegex().find(command)
-        val simpleMessageMatch = "message\\s+(.+?)\\s+(.+)".toRegex().find(command)
+        val input = command.trim()
 
-        return whatsappMatch?.let { Pair(it.groupValues[1], it.groupValues[2]) }
-            ?: messageMatch?.let { Pair(it.groupValues[1], it.groupValues[2]) }
-            ?: simpleWhatsAppMatch?.let { Pair(it.groupValues[1], it.groupValues[2]) }
-            ?: simpleMessageMatch?.let { Pair(it.groupValues[1], it.groupValues[2]) }
+        // Remove "whatsapp" or "message" prefix if present
+        var remaining = input
+        if (remaining.lowercase().startsWith("whatsapp ")) {
+            remaining = remaining.substring("whatsapp ".length).trim()
+        } else if (remaining.lowercase().startsWith("message ")) {
+            remaining = remaining.substring("message ".length).trim()
+        }
+
+        if (remaining.isBlank()) return null
+
+        // Get all contact names with phone numbers
+        val contacts = loadContactsWithPhoneNumbers()
+        if (contacts.isEmpty()) return null
+
+        // Normalize input for matching: lowercase, collapse whitespace
+        val normalizedInput = normalizeForMatching(remaining)
+
+        // Build normalization map to translate normalized positions back to original
+        val normalizationMap = buildNormalizationMap(remaining)
+
+        // Find the longest contact name that matches the start of the input
+        var bestMatch: String? = null
+        var bestMatchLength = 0
+
+        for (contact in contacts) {
+            val normalizedContact = normalizeForMatching(contact)
+            if (normalizedInput.startsWith(normalizedContact)) {
+                // Check if it's a word boundary (next char is space or end)
+                val contactLen = normalizedContact.length
+                val isBoundary = contactLen == normalizedInput.length || normalizedInput[contactLen].isWhitespace()
+                if (isBoundary && contactLen > bestMatchLength) {
+                    bestMatch = contact
+                    bestMatchLength = contactLen
+                }
+            }
+        }
+
+        // If we found a match, split into contact and message
+        bestMatch?.let { matchedContact ->
+            // Find the actual end position in the original (non-normalized) remaining string
+            // using the normalization map to handle whitespace differences correctly
+            val contactEndPos = findOriginalPositionForNormalizedLength(
+                remaining, bestMatchLength, normalizationMap
+            )
+
+            val message = if (contactEndPos > 0 && contactEndPos < remaining.length) {
+                remaining.substring(contactEndPos).trim()
+            } else {
+                ""
+            }
+
+            return Pair(matchedContact, message)
+        }
+
+        // No contact matched
+        return null
+    }
+
+    /**
+     * Loads all contacts that have phone numbers.
+     * Returns list of display names.
+     */
+    private fun loadContactsWithPhoneNumbers(): List<String> {
+        val contentResolver: ContentResolver = contentResolver
+        val contacts = mutableListOf<String>()
+
+        val projection = arrayOf(
+            ContactsContract.Contacts._ID,
+            ContactsContract.Contacts.DISPLAY_NAME,
+            ContactsContract.Contacts.HAS_PHONE_NUMBER
+        )
+
+        val cursor = contentResolver.query(
+            ContactsContract.Contacts.CONTENT_URI,
+            projection,
+            "${ContactsContract.Contacts.HAS_PHONE_NUMBER} = ?",
+            arrayOf("1"),
+            null
+        )
+
+        cursor?.use { c ->
+            while (c.moveToNext()) {
+                val name = c.getString(c.getColumnIndexOrThrow(ContactsContract.Contacts.DISPLAY_NAME))
+                if (name.isNotBlank()) {
+                    contacts.add(name.trim())
+                }
+            }
+        }
+
+        return contacts
+    }
+
+    /**
+     * Normalizes string for contact matching: lowercase, collapse whitespace, trim.
+     */
+    private fun normalizeForMatching(input: String): String {
+        return input.lowercase(Locale.getDefault())
+            .replace("\\s+".toRegex(), " ")
+            .trim()
+    }
+
+    /**
+     * Builds a mapping from normalized string indices to original string indices.
+     * Accounts for trim (leading/trailing whitespace removal) and whitespace collapsing.
+     * Returns a list where each index in the normalized string maps to the corresponding
+     * index in the original string (the position of that character in the original).
+     */
+    private fun buildNormalizationMap(original: String): List<Int> {
+        val map = mutableListOf<Int>()
+        var origPos = 0
+        var inWhitespace = false
+
+        // Skip leading whitespace (trim)
+        while (origPos < original.length && original[origPos].isWhitespace()) {
+            origPos++
+        }
+
+        while (origPos < original.length) {
+            val c = original[origPos]
+            if (c.isWhitespace()) {
+                if (!inWhitespace) {
+                    // First whitespace in a sequence -> maps to a single space in normalized
+                    map.add(origPos)
+                    inWhitespace = true
+                }
+                // Consecutive whitespace doesn't add to normalized string
+            } else {
+                // Non-whitespace character -> maps to itself in normalized
+                map.add(origPos)
+                inWhitespace = false
+            }
+            origPos++
+        }
+
+        // Handle trailing whitespace trim - if we ended on whitespace, the last entry
+        // corresponds to a space that would be trimmed, so remove it
+        if (map.isNotEmpty() && inWhitespace) {
+            map.removeAt(map.size - 1)
+        }
+
+        return map
+    }
+
+    /**
+     * Finds the position in the original string where the normalized prefix of given length ends.
+     * Uses the normalization map to translate normalized position to original position.
+     */
+    private fun findOriginalPositionForNormalizedLength(
+        original: String,
+        normalizedLength: Int,
+        normalizationMap: List<Int>
+    ): Int {
+        if (normalizedLength <= 0) return 0
+        if (normalizedLength >= normalizationMap.size) return original.length
+
+        // The normalizedLength-th character in normalized (0-indexed) maps to this position
+        val origIndex = normalizationMap[normalizedLength - 1]
+
+        // Return position AFTER this character in original
+        var pos = origIndex + 1
+
+        // Skip any trailing whitespace in original that was collapsed
+        while (pos < original.length && original[pos].isWhitespace()) {
+            pos++
+        }
+
+        return pos
     }
 
     private fun extractSearchQuery(command: String): String? {
