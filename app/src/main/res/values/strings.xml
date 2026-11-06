@@ -1,9 +1,8 @@
 <resources>
     <string name="app_name">Buddy V2</string>
-    <string name="tap_mic_to_speak">Tap mic to speak</string>
-    <string name="mic_button_desc">Voice command button</string>
-    <string name="listening">Listening…</string>
-    <string name="processing">Processing…</string>
+    <string name="enter_command">Enter a command</string>
+    <string name="type_command_hint">Type a command (e.g., open chrome, call mom, whatsapp john hello, search weather)</string>
+    <string name="send_button_desc">Send command</string>
     <string name="permission_contacts_rationale">Contacts permission is required to call or message people by name.</string>
     <string name="permission_contacts_denied">Contacts permission denied. Cannot resolve contact names.</string>
     <string name="contact_not_found">Contact "%s" not found.</string>

@@ -4,7 +4,6 @@ package com.buddyv2.app.databinding;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
@@ -22,25 +21,10 @@ public final class ActivityMainBinding implements ViewBinding {
   private final ConstraintLayout rootView;
 
   @NonNull
-  public final ConstraintLayout buttonGrid;
-
-  @NonNull
-  public final Button callButton;
-
-  @NonNull
   public final TextView commandText;
 
   @NonNull
-  public final TextView helpText;
-
-  @NonNull
   public final ImageButton micButton;
-
-  @NonNull
-  public final Button openAppButton;
-
-  @NonNull
-  public final Button searchButton;
 
   @NonNull
   public final TextView statusText;
@@ -48,25 +32,13 @@ public final class ActivityMainBinding implements ViewBinding {
   @NonNull
   public final TextView titleText;
 
-  @NonNull
-  public final Button whatsappButton;
-
-  private ActivityMainBinding(@NonNull ConstraintLayout rootView,
-      @NonNull ConstraintLayout buttonGrid, @NonNull Button callButton,
-      @NonNull TextView commandText, @NonNull TextView helpText, @NonNull ImageButton micButton,
-      @NonNull Button openAppButton, @NonNull Button searchButton, @NonNull TextView statusText,
-      @NonNull TextView titleText, @NonNull Button whatsappButton) {
+  private ActivityMainBinding(@NonNull ConstraintLayout rootView, @NonNull TextView commandText,
+      @NonNull ImageButton micButton, @NonNull TextView statusText, @NonNull TextView titleText) {
     this.rootView = rootView;
-    this.buttonGrid = buttonGrid;
-    this.callButton = callButton;
     this.commandText = commandText;
-    this.helpText = helpText;
     this.micButton = micButton;
-    this.openAppButton = openAppButton;
-    this.searchButton = searchButton;
     this.statusText = statusText;
     this.titleText = titleText;
-    this.whatsappButton = whatsappButton;
   }
 
   @Override
@@ -96,45 +68,15 @@ public final class ActivityMainBinding implements ViewBinding {
     // This is done to optimize the compiled bytecode for size and performance.
     int id;
     missingId: {
-      id = R.id.buttonGrid;
-      ConstraintLayout buttonGrid = ViewBindings.findChildViewById(rootView, id);
-      if (buttonGrid == null) {
-        break missingId;
-      }
-
-      id = R.id.callButton;
-      Button callButton = ViewBindings.findChildViewById(rootView, id);
-      if (callButton == null) {
-        break missingId;
-      }
-
       id = R.id.commandText;
       TextView commandText = ViewBindings.findChildViewById(rootView, id);
       if (commandText == null) {
         break missingId;
       }
 
-      id = R.id.helpText;
-      TextView helpText = ViewBindings.findChildViewById(rootView, id);
-      if (helpText == null) {
-        break missingId;
-      }
-
       id = R.id.micButton;
       ImageButton micButton = ViewBindings.findChildViewById(rootView, id);
       if (micButton == null) {
-        break missingId;
-      }
-
-      id = R.id.openAppButton;
-      Button openAppButton = ViewBindings.findChildViewById(rootView, id);
-      if (openAppButton == null) {
-        break missingId;
-      }
-
-      id = R.id.searchButton;
-      Button searchButton = ViewBindings.findChildViewById(rootView, id);
-      if (searchButton == null) {
         break missingId;
       }
 
@@ -150,15 +92,8 @@ public final class ActivityMainBinding implements ViewBinding {
         break missingId;
       }
 
-      id = R.id.whatsappButton;
-      Button whatsappButton = ViewBindings.findChildViewById(rootView, id);
-      if (whatsappButton == null) {
-        break missingId;
-      }
-
-      return new ActivityMainBinding((ConstraintLayout) rootView, buttonGrid, callButton,
-          commandText, helpText, micButton, openAppButton, searchButton, statusText, titleText,
-          whatsappButton);
+      return new ActivityMainBinding((ConstraintLayout) rootView, commandText, micButton,
+          statusText, titleText);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

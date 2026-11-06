@@ -18,214 +18,194 @@
 14    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 14-->/root/buddy-V2/app/src/main/AndroidManifest.xml:9:5-71
 14-->/root/buddy-V2/app/src/main/AndroidManifest.xml:9:22-68
-15    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-15-->/root/buddy-V2/app/src/main/AndroidManifest.xml:10:5-77
+15    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+15-->/root/buddy-V2/app/src/main/AndroidManifest.xml:10:5-11:53
 15-->/root/buddy-V2/app/src/main/AndroidManifest.xml:10:22-74
-16    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
-16-->/root/buddy-V2/app/src/main/AndroidManifest.xml:11:5-88
-16-->/root/buddy-V2/app/src/main/AndroidManifest.xml:11:22-85
-17    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
-17-->/root/buddy-V2/app/src/main/AndroidManifest.xml:12:5-13:53
-17-->/root/buddy-V2/app/src/main/AndroidManifest.xml:12:22-74
-18    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
-18-->/root/buddy-V2/app/src/main/AndroidManifest.xml:14:5-15:47
-18-->/root/buddy-V2/app/src/main/AndroidManifest.xml:14:22-75
-19    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-19-->/root/buddy-V2/app/src/main/AndroidManifest.xml:16:5-78
-19-->/root/buddy-V2/app/src/main/AndroidManifest.xml:16:22-75
-20
-21    <!-- Voice recognition -->
-22    <uses-permission android:name="android.permission.BLUETOOTH" />
-22-->/root/buddy-V2/app/src/main/AndroidManifest.xml:19:5-68
-22-->/root/buddy-V2/app/src/main/AndroidManifest.xml:19:22-65
-23    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
-23-->/root/buddy-V2/app/src/main/AndroidManifest.xml:20:5-74
-23-->/root/buddy-V2/app/src/main/AndroidManifest.xml:20:22-71
-24
-25    <queries>
-25-->/root/buddy-V2/app/src/main/AndroidManifest.xml:56:5-74:15
-26
-27        <!-- For opening apps -->
-28        <intent>
-28-->/root/buddy-V2/app/src/main/AndroidManifest.xml:58:9-61:18
-29            <action android:name="android.intent.action.MAIN" />
-29-->/root/buddy-V2/app/src/main/AndroidManifest.xml:41:17-69
-29-->/root/buddy-V2/app/src/main/AndroidManifest.xml:41:25-66
-30
-31            <category android:name="android.intent.category.LAUNCHER" />
-31-->/root/buddy-V2/app/src/main/AndroidManifest.xml:42:17-77
-31-->/root/buddy-V2/app/src/main/AndroidManifest.xml:42:27-74
-32        </intent>
-33        <!-- For WhatsApp -->
-34        <package android:name="com.whatsapp" />
-34-->/root/buddy-V2/app/src/main/AndroidManifest.xml:63:9-48
-34-->/root/buddy-V2/app/src/main/AndroidManifest.xml:63:18-45
-35        <package android:name="com.whatsapp.w4b" />
-35-->/root/buddy-V2/app/src/main/AndroidManifest.xml:64:9-52
-35-->/root/buddy-V2/app/src/main/AndroidManifest.xml:64:18-49
-36        <!-- For browser -->
+16    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
+16-->/root/buddy-V2/app/src/main/AndroidManifest.xml:12:5-13:47
+16-->/root/buddy-V2/app/src/main/AndroidManifest.xml:12:22-75
+17    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+17-->/root/buddy-V2/app/src/main/AndroidManifest.xml:14:5-78
+17-->/root/buddy-V2/app/src/main/AndroidManifest.xml:14:22-75
+18    <uses-permission android:name="android.permission.READ_CONTACTS" />
+18-->/root/buddy-V2/app/src/main/AndroidManifest.xml:15:5-72
+18-->/root/buddy-V2/app/src/main/AndroidManifest.xml:15:22-69
+19
+20    <queries>
+20-->/root/buddy-V2/app/src/main/AndroidManifest.xml:46:5-64:15
+21
+22        <!-- For opening apps -->
+23        <intent>
+23-->/root/buddy-V2/app/src/main/AndroidManifest.xml:48:9-51:18
+24            <action android:name="android.intent.action.MAIN" />
+24-->/root/buddy-V2/app/src/main/AndroidManifest.xml:36:17-69
+24-->/root/buddy-V2/app/src/main/AndroidManifest.xml:36:25-66
+25
+26            <category android:name="android.intent.category.LAUNCHER" />
+26-->/root/buddy-V2/app/src/main/AndroidManifest.xml:37:17-77
+26-->/root/buddy-V2/app/src/main/AndroidManifest.xml:37:27-74
+27        </intent>
+28        <!-- For WhatsApp -->
+29        <package android:name="com.whatsapp" />
+29-->/root/buddy-V2/app/src/main/AndroidManifest.xml:53:9-48
+29-->/root/buddy-V2/app/src/main/AndroidManifest.xml:53:18-45
+30        <package android:name="com.whatsapp.w4b" />
+30-->/root/buddy-V2/app/src/main/AndroidManifest.xml:54:9-52
+30-->/root/buddy-V2/app/src/main/AndroidManifest.xml:54:18-49
+31        <!-- For browser -->
+32        <intent>
+32-->/root/buddy-V2/app/src/main/AndroidManifest.xml:56:9-59:18
+33            <action android:name="android.intent.action.VIEW" />
+33-->/root/buddy-V2/app/src/main/AndroidManifest.xml:57:13-65
+33-->/root/buddy-V2/app/src/main/AndroidManifest.xml:57:21-62
+34
+35            <data android:scheme="https" />
+35-->/root/buddy-V2/app/src/main/AndroidManifest.xml:58:13-44
+35-->/root/buddy-V2/app/src/main/AndroidManifest.xml:58:19-41
+36        </intent>
 37        <intent>
-37-->/root/buddy-V2/app/src/main/AndroidManifest.xml:66:9-69:18
+37-->/root/buddy-V2/app/src/main/AndroidManifest.xml:60:9-63:18
 38            <action android:name="android.intent.action.VIEW" />
-38-->/root/buddy-V2/app/src/main/AndroidManifest.xml:67:13-65
-38-->/root/buddy-V2/app/src/main/AndroidManifest.xml:67:21-62
+38-->/root/buddy-V2/app/src/main/AndroidManifest.xml:57:13-65
+38-->/root/buddy-V2/app/src/main/AndroidManifest.xml:57:21-62
 39
-40            <data android:scheme="https" />
-40-->/root/buddy-V2/app/src/main/AndroidManifest.xml:68:13-44
-40-->/root/buddy-V2/app/src/main/AndroidManifest.xml:68:19-41
+40            <data android:scheme="http" />
+40-->/root/buddy-V2/app/src/main/AndroidManifest.xml:58:13-44
+40-->/root/buddy-V2/app/src/main/AndroidManifest.xml:58:19-41
 41        </intent>
-42        <intent>
-42-->/root/buddy-V2/app/src/main/AndroidManifest.xml:70:9-73:18
-43            <action android:name="android.intent.action.VIEW" />
-43-->/root/buddy-V2/app/src/main/AndroidManifest.xml:67:13-65
-43-->/root/buddy-V2/app/src/main/AndroidManifest.xml:67:21-62
-44
-45            <data android:scheme="http" />
-45-->/root/buddy-V2/app/src/main/AndroidManifest.xml:68:13-44
-45-->/root/buddy-V2/app/src/main/AndroidManifest.xml:68:19-41
-46        </intent>
-47    </queries>
-48
-49    <permission
-49-->[androidx.core:core:1.13.1] /root/.gradle/caches/transforms-4/4a68c54374c8400134b1f715352a6d7a/transformed/core-1.13.1/AndroidManifest.xml:22:5-24:47
-50        android:name="com.buddyv2.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
-50-->[androidx.core:core:1.13.1] /root/.gradle/caches/transforms-4/4a68c54374c8400134b1f715352a6d7a/transformed/core-1.13.1/AndroidManifest.xml:23:9-81
-51        android:protectionLevel="signature" />
-51-->[androidx.core:core:1.13.1] /root/.gradle/caches/transforms-4/4a68c54374c8400134b1f715352a6d7a/transformed/core-1.13.1/AndroidManifest.xml:24:9-44
-52
-53    <uses-permission android:name="com.buddyv2.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
-53-->[androidx.core:core:1.13.1] /root/.gradle/caches/transforms-4/4a68c54374c8400134b1f715352a6d7a/transformed/core-1.13.1/AndroidManifest.xml:26:5-97
-53-->[androidx.core:core:1.13.1] /root/.gradle/caches/transforms-4/4a68c54374c8400134b1f715352a6d7a/transformed/core-1.13.1/AndroidManifest.xml:26:22-94
-54
-55    <application
-55-->/root/buddy-V2/app/src/main/AndroidManifest.xml:22:5-54:19
-56        android:name="com.buddyv2.app.BuddyApplication"
-56-->/root/buddy-V2/app/src/main/AndroidManifest.xml:23:9-41
-57        android:allowBackup="true"
-57-->/root/buddy-V2/app/src/main/AndroidManifest.xml:24:9-35
-58        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
-58-->[androidx.core:core:1.13.1] /root/.gradle/caches/transforms-4/4a68c54374c8400134b1f715352a6d7a/transformed/core-1.13.1/AndroidManifest.xml:28:18-86
-59        android:dataExtractionRules="@xml/data_extraction_rules"
-59-->/root/buddy-V2/app/src/main/AndroidManifest.xml:25:9-65
-60        android:debuggable="true"
-61        android:extractNativeLibs="false"
-62        android:fullBackupContent="@xml/backup_rules"
-62-->/root/buddy-V2/app/src/main/AndroidManifest.xml:26:9-54
-63        android:icon="@mipmap/ic_launcher"
-63-->/root/buddy-V2/app/src/main/AndroidManifest.xml:27:9-43
-64        android:label="@string/app_name"
-64-->/root/buddy-V2/app/src/main/AndroidManifest.xml:28:9-41
-65        android:roundIcon="@mipmap/ic_launcher_round"
-65-->/root/buddy-V2/app/src/main/AndroidManifest.xml:29:9-54
-66        android:supportsRtl="true"
-66-->/root/buddy-V2/app/src/main/AndroidManifest.xml:30:9-35
-67        android:theme="@style/Theme.BuddyV2" >
-67-->/root/buddy-V2/app/src/main/AndroidManifest.xml:31:9-45
-68        <activity
-68-->/root/buddy-V2/app/src/main/AndroidManifest.xml:34:9-44:20
-69            android:name="com.buddyv2.app.MainActivity"
-69-->/root/buddy-V2/app/src/main/AndroidManifest.xml:35:13-41
-70            android:exported="true"
-70-->/root/buddy-V2/app/src/main/AndroidManifest.xml:36:13-36
-71            android:label="@string/app_name"
-71-->/root/buddy-V2/app/src/main/AndroidManifest.xml:37:13-45
-72            android:launchMode="singleTop"
-72-->/root/buddy-V2/app/src/main/AndroidManifest.xml:38:13-43
-73            android:theme="@style/Theme.BuddyV2.NoActionBar" >
-73-->/root/buddy-V2/app/src/main/AndroidManifest.xml:39:13-61
-74            <intent-filter>
-74-->/root/buddy-V2/app/src/main/AndroidManifest.xml:40:13-43:29
-75                <action android:name="android.intent.action.MAIN" />
-75-->/root/buddy-V2/app/src/main/AndroidManifest.xml:41:17-69
-75-->/root/buddy-V2/app/src/main/AndroidManifest.xml:41:25-66
-76
-77                <category android:name="android.intent.category.LAUNCHER" />
-77-->/root/buddy-V2/app/src/main/AndroidManifest.xml:42:17-77
-77-->/root/buddy-V2/app/src/main/AndroidManifest.xml:42:27-74
-78            </intent-filter>
-79        </activity>
-80
-81        <service
-81-->/root/buddy-V2/app/src/main/AndroidManifest.xml:46:9-49:58
-82            android:name="com.buddyv2.app.VoiceCommandService"
-82-->/root/buddy-V2/app/src/main/AndroidManifest.xml:47:13-48
-83            android:exported="false"
-83-->/root/buddy-V2/app/src/main/AndroidManifest.xml:48:13-37
-84            android:foregroundServiceType="microphone" />
-84-->/root/buddy-V2/app/src/main/AndroidManifest.xml:49:13-55
-85
-86        <meta-data
-86-->/root/buddy-V2/app/src/main/AndroidManifest.xml:51:9-53:32
-87            android:name="android.app.lib_name"
-87-->/root/buddy-V2/app/src/main/AndroidManifest.xml:52:13-48
-88            android:value="" />
-88-->/root/buddy-V2/app/src/main/AndroidManifest.xml:53:13-29
-89
-90        <provider
-90-->[androidx.emoji2:emoji2:1.3.0] /root/.gradle/caches/transforms-4/e7923ad8af933f59870e264cebf9816f/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:24:9-32:20
-91            android:name="androidx.startup.InitializationProvider"
-91-->[androidx.emoji2:emoji2:1.3.0] /root/.gradle/caches/transforms-4/e7923ad8af933f59870e264cebf9816f/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:25:13-67
-92            android:authorities="com.buddyv2.app.androidx-startup"
-92-->[androidx.emoji2:emoji2:1.3.0] /root/.gradle/caches/transforms-4/e7923ad8af933f59870e264cebf9816f/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:26:13-68
-93            android:exported="false" >
-93-->[androidx.emoji2:emoji2:1.3.0] /root/.gradle/caches/transforms-4/e7923ad8af933f59870e264cebf9816f/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:27:13-37
-94            <meta-data
-94-->[androidx.emoji2:emoji2:1.3.0] /root/.gradle/caches/transforms-4/e7923ad8af933f59870e264cebf9816f/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:29:13-31:52
-95                android:name="androidx.emoji2.text.EmojiCompatInitializer"
-95-->[androidx.emoji2:emoji2:1.3.0] /root/.gradle/caches/transforms-4/e7923ad8af933f59870e264cebf9816f/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:30:17-75
-96                android:value="androidx.startup" />
-96-->[androidx.emoji2:emoji2:1.3.0] /root/.gradle/caches/transforms-4/e7923ad8af933f59870e264cebf9816f/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:31:17-49
-97            <meta-data
-97-->[androidx.lifecycle:lifecycle-process:2.8.0] /root/.gradle/caches/transforms-4/0e96229b91f4c792d5f3dda0b6bd23eb/transformed/jetified-lifecycle-process-2.8.0/AndroidManifest.xml:29:13-31:52
-98                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
-98-->[androidx.lifecycle:lifecycle-process:2.8.0] /root/.gradle/caches/transforms-4/0e96229b91f4c792d5f3dda0b6bd23eb/transformed/jetified-lifecycle-process-2.8.0/AndroidManifest.xml:30:17-78
-99                android:value="androidx.startup" />
-99-->[androidx.lifecycle:lifecycle-process:2.8.0] /root/.gradle/caches/transforms-4/0e96229b91f4c792d5f3dda0b6bd23eb/transformed/jetified-lifecycle-process-2.8.0/AndroidManifest.xml:31:17-49
-100            <meta-data
-100-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:29:13-31:52
-101                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
-101-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:30:17-85
-102                android:value="androidx.startup" />
-102-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:31:17-49
-103        </provider>
-104
-105        <receiver
-105-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:34:9-52:20
-106            android:name="androidx.profileinstaller.ProfileInstallReceiver"
-106-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:35:13-76
-107            android:directBootAware="false"
-107-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:36:13-44
-108            android:enabled="true"
-108-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:37:13-35
-109            android:exported="true"
-109-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:38:13-36
-110            android:permission="android.permission.DUMP" >
-110-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:39:13-57
-111            <intent-filter>
-111-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:40:13-42:29
-112                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
-112-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:41:17-91
-112-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:41:25-88
-113            </intent-filter>
-114            <intent-filter>
-114-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:43:13-45:29
-115                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
-115-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:44:17-85
-115-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:44:25-82
-116            </intent-filter>
-117            <intent-filter>
-117-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:46:13-48:29
-118                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
-118-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:47:17-88
-118-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:47:25-85
-119            </intent-filter>
-120            <intent-filter>
-120-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:49:13-51:29
-121                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
-121-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:50:17-95
-121-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:50:25-92
-122            </intent-filter>
-123        </receiver>
-124    </application>
-125
-126</manifest>
+42    </queries>
+43
+44    <permission
+44-->[androidx.core:core:1.13.1] /root/.gradle/caches/transforms-4/4a68c54374c8400134b1f715352a6d7a/transformed/core-1.13.1/AndroidManifest.xml:22:5-24:47
+45        android:name="com.buddyv2.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+45-->[androidx.core:core:1.13.1] /root/.gradle/caches/transforms-4/4a68c54374c8400134b1f715352a6d7a/transformed/core-1.13.1/AndroidManifest.xml:23:9-81
+46        android:protectionLevel="signature" />
+46-->[androidx.core:core:1.13.1] /root/.gradle/caches/transforms-4/4a68c54374c8400134b1f715352a6d7a/transformed/core-1.13.1/AndroidManifest.xml:24:9-44
+47
+48    <uses-permission android:name="com.buddyv2.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+48-->[androidx.core:core:1.13.1] /root/.gradle/caches/transforms-4/4a68c54374c8400134b1f715352a6d7a/transformed/core-1.13.1/AndroidManifest.xml:26:5-97
+48-->[androidx.core:core:1.13.1] /root/.gradle/caches/transforms-4/4a68c54374c8400134b1f715352a6d7a/transformed/core-1.13.1/AndroidManifest.xml:26:22-94
+49
+50    <application
+50-->/root/buddy-V2/app/src/main/AndroidManifest.xml:17:5-44:19
+51        android:name="com.buddyv2.app.BuddyApplication"
+51-->/root/buddy-V2/app/src/main/AndroidManifest.xml:18:9-41
+52        android:allowBackup="true"
+52-->/root/buddy-V2/app/src/main/AndroidManifest.xml:19:9-35
+53        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+53-->[androidx.core:core:1.13.1] /root/.gradle/caches/transforms-4/4a68c54374c8400134b1f715352a6d7a/transformed/core-1.13.1/AndroidManifest.xml:28:18-86
+54        android:dataExtractionRules="@xml/data_extraction_rules"
+54-->/root/buddy-V2/app/src/main/AndroidManifest.xml:20:9-65
+55        android:debuggable="true"
+56        android:extractNativeLibs="false"
+57        android:fullBackupContent="@xml/backup_rules"
+57-->/root/buddy-V2/app/src/main/AndroidManifest.xml:21:9-54
+58        android:icon="@drawable/circle_bg"
+58-->/root/buddy-V2/app/src/main/AndroidManifest.xml:22:9-43
+59        android:label="@string/app_name"
+59-->/root/buddy-V2/app/src/main/AndroidManifest.xml:23:9-41
+60        android:roundIcon="@drawable/circle_bg"
+60-->/root/buddy-V2/app/src/main/AndroidManifest.xml:24:9-48
+61        android:supportsRtl="true"
+61-->/root/buddy-V2/app/src/main/AndroidManifest.xml:25:9-35
+62        android:theme="@style/Theme.BuddyV2" >
+62-->/root/buddy-V2/app/src/main/AndroidManifest.xml:26:9-45
+63        <activity
+63-->/root/buddy-V2/app/src/main/AndroidManifest.xml:29:9-39:20
+64            android:name="com.buddyv2.app.MainActivity"
+64-->/root/buddy-V2/app/src/main/AndroidManifest.xml:30:13-41
+65            android:exported="true"
+65-->/root/buddy-V2/app/src/main/AndroidManifest.xml:31:13-36
+66            android:label="@string/app_name"
+66-->/root/buddy-V2/app/src/main/AndroidManifest.xml:32:13-45
+67            android:launchMode="singleTop"
+67-->/root/buddy-V2/app/src/main/AndroidManifest.xml:33:13-43
+68            android:theme="@style/Theme.BuddyV2.NoActionBar" >
+68-->/root/buddy-V2/app/src/main/AndroidManifest.xml:34:13-61
+69            <intent-filter>
+69-->/root/buddy-V2/app/src/main/AndroidManifest.xml:35:13-38:29
+70                <action android:name="android.intent.action.MAIN" />
+70-->/root/buddy-V2/app/src/main/AndroidManifest.xml:36:17-69
+70-->/root/buddy-V2/app/src/main/AndroidManifest.xml:36:25-66
+71
+72                <category android:name="android.intent.category.LAUNCHER" />
+72-->/root/buddy-V2/app/src/main/AndroidManifest.xml:37:17-77
+72-->/root/buddy-V2/app/src/main/AndroidManifest.xml:37:27-74
+73            </intent-filter>
+74        </activity>
+75
+76        <meta-data
+76-->/root/buddy-V2/app/src/main/AndroidManifest.xml:41:9-43:32
+77            android:name="android.app.lib_name"
+77-->/root/buddy-V2/app/src/main/AndroidManifest.xml:42:13-48
+78            android:value="" />
+78-->/root/buddy-V2/app/src/main/AndroidManifest.xml:43:13-29
+79
+80        <provider
+80-->[androidx.emoji2:emoji2:1.3.0] /root/.gradle/caches/transforms-4/e7923ad8af933f59870e264cebf9816f/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:24:9-32:20
+81            android:name="androidx.startup.InitializationProvider"
+81-->[androidx.emoji2:emoji2:1.3.0] /root/.gradle/caches/transforms-4/e7923ad8af933f59870e264cebf9816f/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:25:13-67
+82            android:authorities="com.buddyv2.app.androidx-startup"
+82-->[androidx.emoji2:emoji2:1.3.0] /root/.gradle/caches/transforms-4/e7923ad8af933f59870e264cebf9816f/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:26:13-68
+83            android:exported="false" >
+83-->[androidx.emoji2:emoji2:1.3.0] /root/.gradle/caches/transforms-4/e7923ad8af933f59870e264cebf9816f/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:27:13-37
+84            <meta-data
+84-->[androidx.emoji2:emoji2:1.3.0] /root/.gradle/caches/transforms-4/e7923ad8af933f59870e264cebf9816f/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:29:13-31:52
+85                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+85-->[androidx.emoji2:emoji2:1.3.0] /root/.gradle/caches/transforms-4/e7923ad8af933f59870e264cebf9816f/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:30:17-75
+86                android:value="androidx.startup" />
+86-->[androidx.emoji2:emoji2:1.3.0] /root/.gradle/caches/transforms-4/e7923ad8af933f59870e264cebf9816f/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:31:17-49
+87            <meta-data
+87-->[androidx.lifecycle:lifecycle-process:2.8.0] /root/.gradle/caches/transforms-4/0e96229b91f4c792d5f3dda0b6bd23eb/transformed/jetified-lifecycle-process-2.8.0/AndroidManifest.xml:29:13-31:52
+88                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+88-->[androidx.lifecycle:lifecycle-process:2.8.0] /root/.gradle/caches/transforms-4/0e96229b91f4c792d5f3dda0b6bd23eb/transformed/jetified-lifecycle-process-2.8.0/AndroidManifest.xml:30:17-78
+89                android:value="androidx.startup" />
+89-->[androidx.lifecycle:lifecycle-process:2.8.0] /root/.gradle/caches/transforms-4/0e96229b91f4c792d5f3dda0b6bd23eb/transformed/jetified-lifecycle-process-2.8.0/AndroidManifest.xml:31:17-49
+90            <meta-data
+90-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:29:13-31:52
+91                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+91-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:30:17-85
+92                android:value="androidx.startup" />
+92-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:31:17-49
+93        </provider>
+94
+95        <receiver
+95-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:34:9-52:20
+96            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+96-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:35:13-76
+97            android:directBootAware="false"
+97-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:36:13-44
+98            android:enabled="true"
+98-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:37:13-35
+99            android:exported="true"
+99-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:38:13-36
+100            android:permission="android.permission.DUMP" >
+100-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:39:13-57
+101            <intent-filter>
+101-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:40:13-42:29
+102                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+102-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:41:17-91
+102-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:41:25-88
+103            </intent-filter>
+104            <intent-filter>
+104-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:43:13-45:29
+105                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+105-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:44:17-85
+105-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:44:25-82
+106            </intent-filter>
+107            <intent-filter>
+107-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:46:13-48:29
+108                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+108-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:47:17-88
+108-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:47:25-85
+109            </intent-filter>
+110            <intent-filter>
+110-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:49:13-51:29
+111                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+111-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:50:17-95
+111-->[androidx.profileinstaller:profileinstaller:1.3.1] /root/.gradle/caches/transforms-4/cd054fe9d11b22ec1f8da59c0d81a596/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:50:25-92
+112            </intent-filter>
+113        </receiver>
+114    </application>
+115
+116</manifest>

@@ -1,58 +1,52 @@
 package com.buddyv2.app
 
-import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.database.Cursor
-import android.media.AudioDeviceInfo
-import android.media.AudioManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.ContactsContract
 import android.provider.Settings
-import android.speech.RecognitionListener
-import android.speech.RecognizerIntent
-import android.speech.SpeechRecognizer
-import android.speech.tts.TextToSpeech
+import android.text.Editable
+import android.text.TextUtils
+import android.text.TextWatcher
 import android.util.Log
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.view.animation.AlphaAnimation
+import android.view.animation.Animation
+import android.widget.EditText
+import android.widget.ImageButton
+import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.RecyclerView
 import com.buddyv2.app.databinding.ActivityMainBinding
 import java.util.Locale
+import java.util.Random
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
-    private var speechRecognizer: SpeechRecognizer? = null
-    private var textToSpeech: TextToSpeech? = null
-    private var audioManager: AudioManager? = null
-    private var isListening = false
-    private var isProcessing = false
-    private var isBluetoothMicAvailable = false
-    private var selectedCommunicationDevice: AudioDeviceInfo? = null
+    private var pendingCallNumber: String? = null
+    private var pendingWhatsAppContact: String? = null
+    private var pendingWhatsAppMessage: String? = null
 
     private val permissions = arrayOf(
-        Manifest.permission.RECORD_AUDIO,
-        Manifest.permission.CALL_PHONE,
-        Manifest.permission.SYSTEM_ALERT_WINDOW,
-        Manifest.permission.READ_CONTACTS
-    )
-
-    private val bluetoothPermissions = arrayOf(
-        Manifest.permission.BLUETOOTH_CONNECT
+        android.Manifest.permission.CALL_PHONE,
+        android.Manifest.permission.SYSTEM_ALERT_WINDOW,
+        android.Manifest.permission.READ_CONTACTS
     )
 
     companion object {
-        private const val TAG = "BuddyV2Voice"
-        const val MAX_LISTENING_DURATION_MS = 5000
-        const val SILENCE_TIMEOUT_MS = 5000
+        private const val TAG = "BuddyV2Text"
     }
 
     private val PERMISSION_REQUEST_CODE = 100
@@ -60,242 +54,83 @@ class MainActivity : AppCompatActivity() {
     private val CALL_PERMISSION_REQUEST_CODE = 102
     private val CONTACTS_PERMISSION_REQUEST_CODE = 103
 
-    // Pending operations waiting for permissions
-    private var pendingCallNumber: String? = null
-    private var pendingWhatsAppContact: String? = null
-    private var pendingWhatsAppMessage: String? = null
+    // Command suggestions for the animated suggestion area
+    private val commandSuggestions = listOf(
+        "open chrome",
+        "call mom",
+        "whatsapp john hello",
+        "search weather today",
+        "open camera",
+        "call dad",
+        "message sarah meeting at 3",
+        "search pizza near me",
+        "open maps",
+        "call work",
+        "whatsapp group meeting tomorrow",
+        "search android tips"
+    )
+
+    private var currentSuggestionIndex = 0
+    private var suggestionAnimation: Animation? = null
+    private val random = Random()
+
+    // Suggestion carousel adapter
+    private lateinit var suggestionAdapter: SuggestionAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        checkBluetoothMicAvailability()
-        initTextToSpeech()
-        initSpeechRecognizer()
+        setupTextInput()
+        setupSuggestionCarousel()
         setupClickListeners()
         checkPermissions()
+        startSuggestionRotation()
     }
 
-    private fun checkBluetoothMicAvailability() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val hasBluetoothConnect = ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
-            if (hasBluetoothConnect) {
-                // Check for actual microphone-capable Bluetooth devices using communication devices
-                val devices = audioManager?.getAvailableCommunicationDevices()
-                isBluetoothMicAvailable = devices?.any { it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO || it.type == AudioDeviceInfo.TYPE_BLE_HEADSET } == true
-                Log.d(TAG, "Bluetooth mic available: $isBluetoothMicAvailable, comm devices: ${devices?.joinToString { "${audioDeviceTypeName(it.type)}(${it.type})" }}")
+    private fun setupTextInput() {
+        // Set initial status
+        binding.statusText.text = getString(R.string.enter_command)
+        binding.commandText.visibility = View.GONE
+
+        // Set up text change listener on the input
+        binding.commandInput.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                // Enable send button when there's text
+                binding.sendButton.isEnabled = s?.trim()?.isNotEmpty() == true
+                binding.sendButton.alpha = if (binding.sendButton.isEnabled) 1f else 0.5f
+            }
+        })
+
+        // Initially disable send button
+        binding.sendButton.isEnabled = false
+        binding.sendButton.alpha = 0.5f
+
+        // Handle enter key on keyboard
+        binding.commandInput.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEND) {
+                submitCommand()
+                true
             } else {
-                isBluetoothMicAvailable = false
-                Log.d(TAG, "Bluetooth CONNECT permission not granted")
-            }
-        } else {
-            // Legacy Bluetooth permissions (Android 11 and below)
-            val hasBluetooth = ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH) == PackageManager.PERMISSION_GRANTED
-            val hasBluetoothAdmin = ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_ADMIN) == PackageManager.PERMISSION_GRANTED
-            isBluetoothMicAvailable = hasBluetooth && hasBluetoothAdmin
-            if (isBluetoothMicAvailable) {
-                val devices = audioManager?.getDevices(AudioManager.GET_DEVICES_INPUTS)
-                Log.d(TAG, "Legacy Bluetooth available, input devices: ${devices?.joinToString { audioDeviceTypeName(it.type) }}")
+                false
             }
         }
     }
 
-    private fun routeAudioToBluetoothMic(): Boolean {
-        if (!isBluetoothMicAvailable || audioManager == null) {
-            Log.d(TAG, "routeAudioToBluetoothMic: not available or no audioManager")
-            return false
+    private fun setupSuggestionCarousel() {
+        suggestionAdapter = SuggestionAdapter(commandSuggestions) { suggestion ->
+            // When a suggestion is clicked, populate the input field
+            binding.commandInput.setText(suggestion)
+            binding.commandInput.setSelection(suggestion.length)
         }
-
-        // Get available COMMUNICATION (output) devices for setCommunicationDevice
-        val commDevices = audioManager!!.getAvailableCommunicationDevices()
-        val btDevice = commDevices?.firstOrNull { it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO || it.type == AudioDeviceInfo.TYPE_BLE_HEADSET }
-
-        if (btDevice == null) {
-            Log.w(TAG, "No Bluetooth SCO/LE headset communication device found for routing")
-            isBluetoothMicAvailable = false
-            return false
-        }
-
-        val result = audioManager!!.setCommunicationDevice(btDevice)
-        if (result) {
-            selectedCommunicationDevice = btDevice
-            Log.d(TAG, "Bluetooth mic routed successfully to: ${audioDeviceTypeName(btDevice.type)} (type=${btDevice.type})")
-        } else {
-            Log.w(TAG, "setCommunicationDevice returned false for: ${audioDeviceTypeName(btDevice.type)}")
-            isBluetoothMicAvailable = false
-            selectedCommunicationDevice = null
-        }
-        return result
-    }
-
-    private fun clearCommunicationDevice() {
-        audioManager?.let { am ->
-            selectedCommunicationDevice?.let { device ->
-                // setCommunicationDevice(null) may not be available at all API levels; just clear local reference
-                Log.d(TAG, "Clearing communication device reference (${audioDeviceTypeName(device.type)}), fallback to default")
-            }
-            selectedCommunicationDevice = null
-        }
-    }
-
-    private fun audioDeviceTypeName(type: Int): String {
-        return when (type) {
-            AudioDeviceInfo.TYPE_BUILTIN_EARPIECE -> "EARPIECE"
-            AudioDeviceInfo.TYPE_BUILTIN_SPEAKER -> "SPEAKER"
-            AudioDeviceInfo.TYPE_WIRED_HEADSET -> "WIRED_HEADSET"
-            AudioDeviceInfo.TYPE_WIRED_HEADPHONES -> "WIRED_HEADPHONES"
-            AudioDeviceInfo.TYPE_BLUETOOTH_SCO -> "BT_SCO"
-            AudioDeviceInfo.TYPE_BLUETOOTH_A2DP -> "BT_A2DP"
-            AudioDeviceInfo.TYPE_HDMI -> "HDMI"
-            AudioDeviceInfo.TYPE_BUILTIN_MIC -> "BUILTIN_MIC"
-            AudioDeviceInfo.TYPE_FM_TUNER -> "FM_TUNER"
-            AudioDeviceInfo.TYPE_TV_TUNER -> "TV_TUNER"
-            AudioDeviceInfo.TYPE_TELEPHONY -> "TELEPHONY"
-            AudioDeviceInfo.TYPE_AUX_LINE -> "AUX_LINE"
-            AudioDeviceInfo.TYPE_IP -> "IP"
-            AudioDeviceInfo.TYPE_BUS -> "BUS"
-            AudioDeviceInfo.TYPE_USB_DEVICE -> "USB_DEVICE"
-            AudioDeviceInfo.TYPE_USB_HEADSET -> "USB_HEADSET"
-            AudioDeviceInfo.TYPE_USB_ACCESSORY -> "USB_ACCESSORY"
-            AudioDeviceInfo.TYPE_DOCK -> "DOCK"
-            AudioDeviceInfo.TYPE_FM -> "FM"
-            AudioDeviceInfo.TYPE_BUILTIN_SPEAKER_SAFE -> "SPEAKER_SAFE"
-            AudioDeviceInfo.TYPE_REMOTE_SUBMIX -> "REMOTE_SUBMIX"
-            AudioDeviceInfo.TYPE_BLE_HEADSET -> "BLE_HEADSET"
-            AudioDeviceInfo.TYPE_BLE_SPEAKER -> "BLE_SPEAKER"
-            else -> "UNKNOWN($type)"
-        }
-    }
-
-    private fun initTextToSpeech() {
-        textToSpeech = TextToSpeech(this) { status ->
-            if (status == TextToSpeech.SUCCESS) {
-                textToSpeech?.language = Locale.getDefault()
-            }
-        }
-    }
-
-    private fun initSpeechRecognizer() {
-        if (SpeechRecognizer.isRecognitionAvailable(this)) {
-            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this)
-            speechRecognizer?.setRecognitionListener(object : RecognitionListener {
-                override fun onReadyForSpeech(params: Bundle?) {
-                    Log.d(TAG, "onReadyForSpeech - recognizer ready, waiting for speech")
-                    runOnUiThread { binding.statusText.text = getString(R.string.listening) }
-                }
-
-                override fun onBeginningOfSpeech() {
-                    Log.d(TAG, "onBeginningOfSpeech - speech detected, recording...")
-                }
-                override fun onRmsChanged(rmsdB: Float) {
-                    // Log.d(TAG, "onRmsChanged: $rmsdB")
-                }
-                override fun onBufferReceived(buffer: ByteArray?) {}
-                override fun onEndOfSpeech() {
-                    Log.d(TAG, "onEndOfSpeech - speech ended, finalizing recognition...")
-                    runOnUiThread { binding.statusText.text = getString(R.string.processing) }
-                }
-
-                override fun onError(error: Int) {
-                    val (errorType, userMessage) = when (error) {
-                        SpeechRecognizer.ERROR_AUDIO -> Pair("AUDIO", "Microphone unavailable. Check earbuds connection.")
-                        SpeechRecognizer.ERROR_CLIENT -> Pair("CLIENT", "Client error. Try again.")
-                        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> Pair("PERMISSION", "Microphone permission denied.")
-                        SpeechRecognizer.ERROR_NETWORK -> Pair("NETWORK", "Network error. Check connection.")
-                        SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> Pair("NETWORK_TIMEOUT", "Network timeout. Try again.")
-                        SpeechRecognizer.ERROR_NO_MATCH -> Pair("NO_MATCH", "No speech detected. Speak clearly.")
-                        SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> Pair("BUSY", "Recognizer busy. Wait and retry.")
-                        SpeechRecognizer.ERROR_SERVER -> Pair("SERVER", "Server error. Try again later.")
-                        SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> Pair("TIMEOUT", "Listening timed out. Tap mic and speak.")
-                        else -> Pair("UNKNOWN_$error", "Recognition error ($error). Try again.")
-                    }
-                    // Fatal errors that should stop listening: AUDIO, PERMISSIONS, BUSY, SERVER, CLIENT
-                    // Non-fatal (user can retry): TIMEOUT, NO_MATCH, NETWORK, NETWORK_TIMEOUT
-                    val isFatal = when (error) {
-                        SpeechRecognizer.ERROR_AUDIO,
-                        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS,
-                        SpeechRecognizer.ERROR_RECOGNIZER_BUSY,
-                        SpeechRecognizer.ERROR_SERVER,
-                        SpeechRecognizer.ERROR_CLIENT -> true
-                        else -> false
-                    }
-                    Log.w(TAG, "onError: code=$error, type=$errorType, isFatal=$isFatal, isListening=$isListening, isProcessing=$isProcessing, activeRoute=${getActiveAudioRoute()}")
-                    runOnUiThread {
-                        if (isFatal) {
-                            binding.statusText.text = getString(R.string.tap_mic_to_speak)
-                            isListening = false
-                            isProcessing = false
-                            binding.micButton.setImageResource(android.R.drawable.ic_btn_speak_now)
-                        }
-                        // For non-fatal errors (TIMEOUT, NO_MATCH, NETWORK), keep listening state so user can retry
-                        Toast.makeText(this@MainActivity, userMessage, Toast.LENGTH_LONG).show()
-                    }
-                }
-
-                override fun onResults(results: Bundle) {
-                    Log.d(TAG, "onResults received, isProcessing=$isProcessing")
-                    // Guard against duplicate processing
-                    if (isProcessing) {
-                        Log.w(TAG, "Duplicate onResults ignored")
-                        return
-                    }
-                    isProcessing = true
-
-                    val matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                    val command = matches?.firstOrNull()?.trim()
-
-                    if (command.isNullOrEmpty()) {
-                        Log.w(TAG, "Empty recognition result")
-                        runOnUiThread {
-                            binding.statusText.text = getString(R.string.tap_mic_to_speak)
-                            isListening = false
-                            isProcessing = false
-                            binding.micButton.setImageResource(android.R.drawable.ic_btn_speak_now)
-                            Toast.makeText(this@MainActivity, "No speech detected. Tap mic and try again.", Toast.LENGTH_SHORT).show()
-                        }
-                        isProcessing = false
-                        return
-                    }
-
-                    Log.d(TAG, "Recognized command: $command")
-                    runOnUiThread { processVoiceCommand(command!!) }
-
-                    // Reset UI after processing
-                    runOnUiThread {
-                        binding.statusText.text = getString(R.string.tap_mic_to_speak)
-                        isListening = false
-                        isProcessing = false
-                        binding.micButton.setImageResource(android.R.drawable.ic_btn_speak_now)
-                    }
-                }
-
-                override fun onPartialResults(partialResults: Bundle) {
-                    val partial = partialResults.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()
-                    if (partial != null) Log.d(TAG, "Partial: $partial")
-                }
-                override fun onEvent(eventType: Int, params: Bundle?) {
-                    Log.d(TAG, "onEvent: $eventType")
-                }
-            })
-        } else {
-            binding.statusText.text = "Voice recognition not available"
-            binding.micButton.isEnabled = false
-        }
-    }
-
-    private fun getActiveAudioRoute(): String {
-        return try {
-            val devices = audioManager?.getDevices(AudioManager.GET_DEVICES_INPUTS)
-            devices?.joinToString(", ") { "${audioDeviceTypeName(it.type)}(${it.type})" } ?: "none"
-        } catch (e: Exception) {
-            "error"
-        }
+        binding.suggestionCarousel.adapter = suggestionAdapter
     }
 
     private fun setupClickListeners() {
-        binding.micButton.setOnClickListener { toggleListening() }
+        binding.sendButton.setOnClickListener { submitCommand() }
     }
 
     private fun checkPermissions() {
@@ -306,16 +141,6 @@ class MainActivity : AppCompatActivity() {
             ActivityCompat.requestPermissions(this, missingPermissions.toTypedArray(), PERMISSION_REQUEST_CODE)
         }
 
-        // Check Bluetooth permissions for Android 12+ (for earbud microphone)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val missingBluetooth = bluetoothPermissions.filter {
-                ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
-            }
-            if (missingBluetooth.isNotEmpty()) {
-                ActivityCompat.requestPermissions(this, missingBluetooth.toTypedArray(), PERMISSION_REQUEST_CODE + 10)
-            }
-        }
-
         // Check overlay permission for Android 23+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
             val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
@@ -323,89 +148,61 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun toggleListening() {
-        if (isListening || isProcessing) {
-            stopListening()
-        } else {
-            startListening()
-        }
-    }
-
-    private fun startListening() {
-        // Check RECORD_AUDIO permission first
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            Log.w(TAG, "RECORD_AUDIO permission not granted")
-            Toast.makeText(this, "Microphone permission required", Toast.LENGTH_SHORT).show()
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), PERMISSION_REQUEST_CODE)
-            return
-        }
-
-        // Re-check Bluetooth mic availability in case it changed
-        checkBluetoothMicAvailability()
-
-        speechRecognizer?.let { recognizer ->
-            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
-                putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak a command...")
-                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-                // Max listening duration: 5 seconds total
-                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, SILENCE_TIMEOUT_MS)
-                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, SILENCE_TIMEOUT_MS)
-                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 200)
-            }
-
-            // Route audio to Bluetooth mic if available
-            if (isBluetoothMicAvailable) {
-                val routed = routeAudioToBluetoothMic()
-                Log.d(TAG, "Bluetooth mic routing: $routed, activeRoute=${getActiveAudioRoute()}")
-                if (!routed) {
-                    Log.w(TAG, "Bluetooth routing failed, will use default phone mic")
-                    isBluetoothMicAvailable = false
-                }
-            } else {
-                // Ensure we clear any previous communication device selection
-                clearCommunicationDevice()
-            }
-
-            try {
-                recognizer.startListening(intent)
-                isListening = true
-                isProcessing = false
-                binding.micButton.setImageResource(android.R.drawable.ic_media_pause)
-                binding.statusText.text = getString(R.string.listening)
-                Log.d(TAG, "startListening: maxDuration=${MAX_LISTENING_DURATION_MS}ms, silenceTimeout=${SILENCE_TIMEOUT_MS}ms, btAvailable=$isBluetoothMicAvailable, activeRoute=${getActiveAudioRoute()}")
-            } catch (e: Exception) {
-                Log.e(TAG, "startListening error", e)
-                Toast.makeText(this, "Error starting voice recognition: ${e.message}", Toast.LENGTH_SHORT).show()
-                resetToIdle()
+    private fun startSuggestionRotation() {
+        // Rotate suggestions every 4 seconds with animation
+        val runnable = object : Runnable {
+            override fun run() {
+                runOnUiThread { rotateSuggestion() }
+                binding.root.postDelayed(this, 4000)
             }
         }
+        binding.root.postDelayed(runnable, 4000)
     }
 
-    private fun resetToIdle() {
-        runOnUiThread {
-            binding.statusText.text = getString(R.string.tap_mic_to_speak)
-            isListening = false
-            isProcessing = false
-            binding.micButton.setImageResource(android.R.drawable.ic_btn_speak_now)
-        }
+    private fun rotateSuggestion() {
+        val nextIndex = (currentSuggestionIndex + 1) % commandSuggestions.size
+
+        // Fade out current suggestion
+        val fadeOut = AlphaAnimation(1f, 0f)
+        fadeOut.duration = 300
+        fadeOut.setAnimationListener(object : Animation.AnimationListener {
+            override fun onAnimationStart(animation: Animation?) {}
+            override fun onAnimationEnd(animation: Animation?) {
+                // Update text
+                currentSuggestionIndex = nextIndex
+                suggestionAdapter.notifyItemChanged(currentSuggestionIndex)
+
+                // Scroll to the new suggestion
+                binding.suggestionCarousel.smoothScrollToPosition(currentSuggestionIndex)
+
+                // Fade in new suggestion
+                val fadeIn = AlphaAnimation(0f, 1f)
+                fadeIn.duration = 300
+                binding.suggestionCarousel.startAnimation(fadeIn)
+            }
+            override fun onAnimationRepeat(animation: Animation?) {}
+        })
+        binding.suggestionCarousel.startAnimation(fadeOut)
     }
 
-    private fun stopListening() {
-        Log.d(TAG, "stopListening called, isListening=$isListening, isProcessing=$isProcessing")
-        speechRecognizer?.stopListening()
-        // Don't clear communication device here - let it persist for next use
-        // clearCommunicationDevice()
-        resetToIdle()
+    private fun submitCommand() {
+        val input = binding.commandInput.text.toString()
+        val trimmed = input.trim()
+        if (trimmed.isEmpty()) return
+
+        // Clear input
+        binding.commandInput.setText("")
+
+        // Show feedback
+        binding.commandText.text = "Heard: $trimmed"
+        binding.commandText.visibility = View.VISIBLE
+
+        speak("Processing: $trimmed")
+        processTextCommand(trimmed)
     }
 
-    private fun processVoiceCommand(command: String) {
+    private fun processTextCommand(command: String) {
         val lowerCommand = command.lowercase(Locale.getDefault())
-        binding.commandText.text = "Heard: $command"
-        binding.commandText.visibility = android.view.View.VISIBLE
-
-        speak("Processing: $command")
 
         when {
             lowerCommand.contains("open") -> extractAppName(lowerCommand)?.let { openApp(it) }
@@ -473,12 +270,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun extractContactAndMessage(command: String): Pair<String, String>? {
-        // Pattern: "whatsapp [contact] [message]" or "message [contact] [message]"
-        // Also handle "whatsapp Rahul, tell him I'm coming" format
         val whatsappMatch = "whatsapp\\s+(.+?)\\s*(?:,|\\s+)(?:tell\\s+(?:him|her|them)\\s+)?(.+)".toRegex().find(command)
         val messageMatch = "message\\s+(.+?)\\s*(?:,|\\s+)(?:tell\\s+(?:him|her|them)\\s+)?(.+)".toRegex().find(command)
-
-        // Fallback to simple space-separated
         val simpleWhatsAppMatch = "whatsapp\\s+(.+?)\\s+(.+)".toRegex().find(command)
         val simpleMessageMatch = "message\\s+(.+?)\\s+(.+)".toRegex().find(command)
 
@@ -528,9 +321,9 @@ class MainActivity : AppCompatActivity() {
     // ===== CONTACT RESOLUTION =====
 
     private fun resolveAndCall(contactName: String) {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
-            pendingCallNumber = null // We'll resolve after permission
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.READ_CONTACTS), CONTACTS_PERMISSION_REQUEST_CODE)
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+            pendingCallNumber = null
+            ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.READ_CONTACTS), CONTACTS_PERMISSION_REQUEST_CODE)
             speak("Need contacts permission to find $contactName")
             return
         }
@@ -550,10 +343,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun resolveAndSendWhatsApp(contactName: String, message: String) {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
             pendingWhatsAppContact = contactName
             pendingWhatsAppMessage = message
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.READ_CONTACTS), CONTACTS_PERMISSION_REQUEST_CODE)
+            ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.READ_CONTACTS), CONTACTS_PERMISSION_REQUEST_CODE)
             speak("Need contacts permission to find $contactName")
             return
         }
@@ -660,7 +453,7 @@ class MainActivity : AppCompatActivity() {
     // ===== ACTION EXECUTION =====
 
     private fun makeCall(phoneNumber: String) {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED) {
             val intent = Intent(Intent.ACTION_CALL, Uri.parse("tel:$phoneNumber"))
             try {
                 startActivity(intent)
@@ -671,7 +464,7 @@ class MainActivity : AppCompatActivity() {
             }
         } else {
             pendingCallNumber = phoneNumber
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CALL_PHONE), CALL_PERMISSION_REQUEST_CODE)
+            ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.CALL_PHONE), CALL_PERMISSION_REQUEST_CODE)
         }
     }
 
@@ -747,29 +540,57 @@ class MainActivity : AppCompatActivity() {
                     Toast.makeText(this, R.string.permission_contacts_denied, Toast.LENGTH_SHORT).show()
                 }
             }
-            PERMISSION_REQUEST_CODE + 10 -> {
-                // Bluetooth permissions result
-                val allGranted = grantResults.all { it == PackageManager.PERMISSION_GRANTED }
-                if (allGranted) {
-                    checkBluetoothMicAvailability()
-                    Toast.makeText(this, "Bluetooth microphone enabled", Toast.LENGTH_SHORT).show()
-                } else {
-                    isBluetoothMicAvailable = false
-                    Toast.makeText(this, "Bluetooth permission denied. Using phone microphone.", Toast.LENGTH_LONG).show()
-                }
-            }
         }
     }
 
     private fun speak(text: String) {
-        textToSpeech?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "utterance")
+        // TextToSpeech removed - using Toast for feedback
+        Toast.makeText(this, text, Toast.LENGTH_SHORT).show()
     }
 
     override fun onDestroy() {
-        speechRecognizer?.destroy()
-        textToSpeech?.shutdown()
-        // Clear communication device selection on destroy
-        clearCommunicationDevice()
         super.onDestroy()
+    }
+
+    // ===== SUGGESTION ADAPTER =====
+
+    inner class SuggestionAdapter(
+        private val suggestions: List<String>,
+        private val onClick: (String) -> Unit
+    ) : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewHolder>() {
+
+        inner class SuggestionViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+            val textView: TextView = view.findViewById(android.R.id.text1)
+        }
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SuggestionViewHolder {
+            val view = LayoutInflater.from(parent.context).inflate(
+                android.R.layout.simple_list_item_1, parent, false
+            )
+            // Style the suggestion items
+            val textView = view.findViewById<TextView>(android.R.id.text1)
+            textView.textSize = 14f
+            textView.setTextColor(ContextCompat.getColor(parent.context, R.color.primary_text))
+            textView.setPadding(24, 16, 24, 16)
+            textView.gravity = android.view.Gravity.CENTER_VERTICAL
+            textView.setBackgroundResource(R.drawable.suggestion_item_bg)
+            return SuggestionViewHolder(view)
+        }
+
+        override fun onBindViewHolder(holder: SuggestionViewHolder, position: Int) {
+            val suggestion = suggestions[position]
+            holder.textView.text = suggestion
+            holder.itemView.setOnClickListener { onClick(suggestion) }
+
+            // Add subtle animation on bind
+            holder.itemView.alpha = 0f
+            holder.itemView.animate()
+                .alpha(1f)
+                .setDuration(300)
+                .setStartDelay(position * 50L)
+                .start()
+        }
+
+        override fun getItemCount() = suggestions.size
     }
 }
