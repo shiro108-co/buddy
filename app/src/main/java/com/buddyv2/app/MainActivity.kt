@@ -57,9 +57,9 @@ class MainActivity : AppCompatActivity() {
 
     // Autocomplete popup
     private var autocompletePopup: CommandAutocompletePopup? = null
-    private var isAtTriggerActive = false
-    private var atStartPosition = -1
-    private var atCursorPosition = -1
+    private var isSlashTriggerActive = false
+    private var slashStartPosition = -1
+    private var slashCursorPosition = -1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -114,12 +114,12 @@ class MainActivity : AppCompatActivity() {
         binding.statusText.text = getString(R.string.enter_command)
         binding.commandText.visibility = View.GONE
 
-        // Set up text change listener on the input for @ autocomplete
+        // Set up text change listener on the input for / autocomplete
         binding.commandInput.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
 
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                handleAtTrigger(s, start, before, count)
+                handleSlashTrigger(s, start, before, count)
             }
 
             override fun afterTextChanged(s: Editable?) {
@@ -172,38 +172,38 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun handleAtTrigger(text: CharSequence?, start: Int, before: Int, count: Int) {
+    private fun handleSlashTrigger(text: CharSequence?, start: Int, before: Int, count: Int) {
         val input = text.toString()
 
-        // Check if we're in an @ trigger
-        if (!isAtTriggerActive) {
-            // Look for @ that was just typed (count == 1 means one char added)
-            if (count == 1 && start < input.length && input[start] == '@') {
-                // Check if @ is at start or preceded by space
+        // Check if we're in a / trigger
+        if (!isSlashTriggerActive) {
+            // Look for / that was just typed (count == 1 means one char added)
+            if (count == 1 && start < input.length && input[start] == '/') {
+                // Check if / is at start or preceded by space
                 if (start == 0 || input[start - 1].isWhitespace()) {
-                    activateAtTrigger(start, start + 1, "")
+                    activateSlashTrigger(start, start + 1, "")
                 }
             }
         } else {
-            // We're in an @ trigger, check if we should update or dismiss
-            val atIndex = atStartPosition
+            // We're in a / trigger, check if we should update or dismiss
+            val slashIndex = slashStartPosition
             val cursorPos = binding.commandInput.selectionStart
 
-            // If @ was deleted or we moved before it, dismiss
-            if (atIndex >= input.length || input[atIndex] != '@' || cursorPos <= atIndex) {
-                deactivateAtTrigger()
+            // If / was deleted or we moved before it, dismiss
+            if (slashIndex >= input.length || input[slashIndex] != '/' || cursorPos <= slashIndex) {
+                deactivateSlashTrigger()
                 return
             }
 
-            // Extract query after @
-            val queryStart = atIndex + 1
+            // Extract query after /
+            val queryStart = slashIndex + 1
             val query = if (cursorPos > queryStart) {
                 input.substring(queryStart, cursorPos.coerceAtMost(input.length))
             } else {
                 ""
             }
 
-            // Check for space - if user types space after @, could be end of trigger
+            // Check for space - if user types space after /, could be end of trigger
             // But we allow spaces in multi-word commands like "open chrome"
             // Dismiss on non-word characters that aren't space (like punctuation)
             if (cursorPos > queryStart && cursorPos <= input.length) {
@@ -213,48 +213,48 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            updateAtTrigger(query, cursorPos)
+            updateSlashTrigger(query, cursorPos)
         }
     }
 
-    private fun activateAtTrigger(atPos: Int, cursorPos: Int, query: String) {
-        isAtTriggerActive = true
-        atStartPosition = atPos
-        atCursorPosition = cursorPos
+    private fun activateSlashTrigger(slashPos: Int, cursorPos: Int, query: String) {
+        isSlashTriggerActive = true
+        slashStartPosition = slashPos
+        slashCursorPosition = cursorPos
 
         autocompletePopup = CommandAutocompletePopup(
             context = this,
             anchorView = binding.commandInput,
-            onCommandSelected = { command, atPosition, cursorPosition ->
-                insertCommandSyntax(command, atPosition, cursorPosition)
+            onCommandSelected = { command, slashPosition, cursorPosition ->
+                insertCommandSyntax(command, slashPosition, cursorPosition)
             },
-            onDismiss = { deactivateAtTrigger() }
+            onDismiss = { deactivateSlashTrigger() }
         )
-        autocompletePopup?.show(atPos, cursorPos, query)
+        autocompletePopup?.show(slashPos, cursorPos, query)
     }
 
-    private fun updateAtTrigger(query: String, cursorPos: Int) {
-        atCursorPosition = cursorPos
+    private fun updateSlashTrigger(query: String, cursorPos: Int) {
+        slashCursorPosition = cursorPos
         autocompletePopup?.updateQuery(query)
     }
 
-    private fun deactivateAtTrigger() {
-        isAtTriggerActive = false
-        atStartPosition = -1
-        atCursorPosition = -1
+    private fun deactivateSlashTrigger() {
+        isSlashTriggerActive = false
+        slashStartPosition = -1
+        slashCursorPosition = -1
         autocompletePopup?.dismiss()
         autocompletePopup = null
     }
 
-    private fun insertCommandSyntax(command: CommandRegistry.Command, atPosition: Int, cursorPosition: Int) {
+    private fun insertCommandSyntax(command: CommandRegistry.Command, slashPosition: Int, cursorPosition: Int) {
         val input = binding.commandInput
         val currentText = input.text.toString()
 
-        // Calculate the range to replace: from @ to cursor
-        val replaceStart = atPosition
+        // Calculate the range to replace: from / to cursor
+        val replaceStart = slashPosition
         val replaceEnd = cursorPosition.coerceAtMost(currentText.length)
 
-        // Insert only the command trigger (e.g., "search") not the full syntax
+        // Insert only the command trigger with / prefix (e.g., "/search")
         // The user will then type their query after the command
         val afterText = if (replaceEnd < currentText.length) {
             currentText.substring(replaceEnd)
@@ -262,7 +262,7 @@ class MainActivity : AppCompatActivity() {
             ""
         }
 
-        val trigger = command.trigger
+        val trigger = "/" + command.trigger
         val newText = currentText.substring(0, replaceStart) + trigger + " " + afterText
         input.setText(newText)
 
@@ -270,7 +270,7 @@ class MainActivity : AppCompatActivity() {
         val newCursorPos = replaceStart + trigger.length + 1
         input.setSelection(newCursorPos.coerceAtMost(newText.length))
 
-        deactivateAtTrigger()
+        deactivateSlashTrigger()
     }
 
     private fun setupClickListeners() {
@@ -298,7 +298,7 @@ class MainActivity : AppCompatActivity() {
         if (trimmed.isEmpty()) return
 
         // Dismiss autocomplete if showing
-        deactivateAtTrigger()
+        deactivateSlashTrigger()
 
         // Clear input
         binding.commandInput.setText("")
@@ -312,8 +312,41 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun processTextCommand(command: String) {
-        val lowerCommand = command.lowercase(Locale.getDefault())
+        val trimmed = command.trim()
+        val lowerCommand = trimmed.lowercase(Locale.getDefault())
 
+        // Check if command starts with / (slash command)
+        if (trimmed.startsWith("/")) {
+            processSlashCommand(trimmed)
+        } else {
+            // Backward compatibility: process plain-text commands (without /)
+            processPlainCommand(lowerCommand)
+        }
+    }
+
+    private fun processSlashCommand(command: String) {
+        // Remove leading / and split into trigger and args
+        val withoutSlash = command.substring(1).trim()
+        val parts = withoutSlash.split(" ", limit = 2)
+        val trigger = parts[0].lowercase(Locale.getDefault())
+        val args = if (parts.size > 1) parts[1] else ""
+
+        when (trigger) {
+            "open" -> extractAppName(args)?.let { openApp(it) }
+            "call" -> extractContactName(args)?.let { resolveAndCall(it) }
+            "whatsapp" -> extractContactAndMessage(args)?.let { (contact, message) -> resolveAndSendWhatsApp(contact, message) }
+            "search" -> extractSearchQuery(args)?.let { searchWeb(it) }
+            "help" -> showHelp(args)
+            else -> {
+                val helpText = CommandRegistry.getHelp(trigger)
+                speak(helpText)
+                Toast.makeText(this, helpText, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun processPlainCommand(lowerCommand: String) {
+        // Backward compatibility: handle plain-text commands without /
         when {
             lowerCommand.contains("open") -> extractAppName(lowerCommand)?.let { openApp(it) }
             lowerCommand.contains("call") -> extractContactName(lowerCommand)?.let { resolveAndCall(it) }
@@ -325,10 +358,20 @@ class MainActivity : AppCompatActivity() {
                 extractSearchQuery(lowerCommand)?.let { searchWeb(it) }
             }
             else -> {
-                speak("Command not recognized. Try: open app name, call contact name, whatsapp contact message, or search query")
-                Toast.makeText(this, "Command not recognized", Toast.LENGTH_LONG).show()
+                speak("Command not recognized. Try: /open app name, /call contact name, /whatsapp contact message, /search query, or /help")
+                Toast.makeText(this, "Command not recognized. Type /help for available commands.", Toast.LENGTH_LONG).show()
             }
         }
+    }
+
+    private fun showHelp(topic: String) {
+        val helpText = if (topic.isBlank()) {
+            CommandRegistry.getHelp(null)
+        } else {
+            CommandRegistry.getHelp(topic.trim())
+        }
+        speak(helpText)
+        Toast.makeText(this, helpText, Toast.LENGTH_LONG).show()
     }
 
     private fun extractAppName(command: String): String? {
@@ -343,6 +386,11 @@ class MainActivity : AppCompatActivity() {
                 val after = command.substring(match.range.last + 1).trim()
                 if (after.isNotEmpty()) return after
             }
+        }
+        // Also try if the command is just the app name (e.g., "chrome")
+        val trimmed = command.trim()
+        if (trimmed.isNotEmpty() && !trimmed.contains(" ")) {
+            return trimmed
         }
         return null
     }
@@ -359,6 +407,11 @@ class MainActivity : AppCompatActivity() {
                 val after = command.substring(match.range.last + 1).trim()
                 if (after.isNotEmpty()) return after
             }
+        }
+        // Also try if the command is just the contact name
+        val trimmed = command.trim()
+        if (trimmed.isNotEmpty() && !trimmed.contains(" ")) {
+            return trimmed
         }
         return null
     }
@@ -405,6 +458,11 @@ class MainActivity : AppCompatActivity() {
             if (match != null) {
                 return match.groupValues[1].trim()
             }
+        }
+        // Also try if the command is just the query
+        val trimmed = command.trim()
+        if (trimmed.isNotEmpty()) {
+            return trimmed
         }
         return null
     }

@@ -16,8 +16,8 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.core.content.ContextCompat
 
 /**
- * Floating autocomplete popup for @ command suggestions.
- * Appears above the input field when user types @.
+ * Floating autocomplete popup for / command suggestions.
+ * Appears above the input field when user types /.
  * Compact with max height, scrollable, smooth animations.
  */
 class CommandAutocompletePopup(
@@ -31,7 +31,7 @@ class CommandAutocompletePopup(
     private var recyclerView: RecyclerView? = null
     private var adapter: CommandAdapter? = null
     private var currentQuery = ""
-    private var atPosition = -1
+    private var slashPosition = -1
     private var cursorPosition = -1
     private val allCommands = CommandRegistry.allCommands
 
@@ -69,7 +69,7 @@ class CommandAutocompletePopup(
             holder.categoryView.text = command.category.label
 
             holder.itemView.setOnClickListener {
-                onCommandSelected(command, atPosition, cursorPosition)
+                onCommandSelected(command, slashPosition, cursorPosition)
                 dismiss()
             }
 
@@ -87,13 +87,13 @@ class CommandAutocompletePopup(
         override fun getItemCount() = commands.size
     }
 
-    fun show(atPos: Int, cursorPos: Int, query: String) {
+    fun show(slashPos: Int, cursorPos: Int, query: String) {
         if (popupWindow?.isShowing == true) {
             updateQuery(query)
             return
         }
 
-        atPosition = atPos
+        slashPosition = slashPos
         cursorPosition = cursorPos
         currentQuery = query
 
@@ -203,7 +203,7 @@ class CommandAutocompletePopup(
         popupWindow = null
         recyclerView = null
         adapter = null
-        atPosition = -1
+        slashPosition = -1
         cursorPosition = -1
         currentQuery = ""
     }
@@ -235,7 +235,7 @@ class CommandAutocompletePopup(
         val pos = layoutManager.findFirstVisibleItemPosition()
         if (pos != RecyclerView.NO_POSITION && pos < adapter.itemCount) {
             val command = adapter.commands[pos]
-            onCommandSelected(command, atPosition, cursorPosition)
+            onCommandSelected(command, slashPosition, cursorPosition)
             dismiss()
         }
     }
