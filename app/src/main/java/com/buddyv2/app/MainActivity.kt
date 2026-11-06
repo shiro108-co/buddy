@@ -103,12 +103,29 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Handle back key to dismiss autocomplete
+        // Handle keyboard navigation for autocomplete (Up/Down/Enter/Back)
         binding.commandInput.setOnKeyListener { _, keyCode, event ->
-            if (keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
-                if (autocompletePopup?.isShowing == true) {
-                    autocompletePopup?.dismiss()
-                    return@setOnKeyListener true
+            if (event.action != KeyEvent.ACTION_DOWN) return@setOnKeyListener false
+
+            when (keyCode) {
+                KeyEvent.KEYCODE_BACK -> {
+                    if (autocompletePopup?.isShowing == true) {
+                        autocompletePopup?.dismiss()
+                        return@setOnKeyListener true
+                    }
+                }
+                KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN -> {
+                    if (autocompletePopup?.isShowing == true) {
+                        val direction = if (keyCode == KeyEvent.KEYCODE_DPAD_UP) -1 else 1
+                        autocompletePopup?.moveSelection(direction)
+                        return@setOnKeyListener true
+                    }
+                }
+                KeyEvent.KEYCODE_ENTER -> {
+                    if (autocompletePopup?.isShowing == true) {
+                        autocompletePopup?.selectCurrent()
+                        return@setOnKeyListener true
+                    }
                 }
             }
             false
