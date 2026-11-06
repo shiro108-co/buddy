@@ -15,11 +15,11 @@ import android.text.Editable
 import android.text.TextUtils
 import android.text.TextWatcher
 import android.util.Log
+import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.animation.AlphaAnimation
-import android.view.animation.Animation
+import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.TextView
@@ -30,7 +30,6 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.buddyv2.app.databinding.ActivityMainBinding
 import java.util.Locale
-import java.util.Random
 
 class MainActivity : AppCompatActivity() {
 
@@ -54,28 +53,11 @@ class MainActivity : AppCompatActivity() {
     private val CALL_PERMISSION_REQUEST_CODE = 102
     private val CONTACTS_PERMISSION_REQUEST_CODE = 103
 
-    // Command suggestions for the animated suggestion area
-    private val commandSuggestions = listOf(
-        "open chrome",
-        "call mom",
-        "whatsapp john hello",
-        "search weather today",
-        "open camera",
-        "call dad",
-        "message sarah meeting at 3",
-        "search pizza near me",
-        "open maps",
-        "call work",
-        "whatsapp group meeting tomorrow",
-        "search android tips"
-    )
-
-    private var currentSuggestionIndex = 0
-    private var suggestionAnimation: Animation? = null
-    private val random = Random()
-
-    // Suggestion carousel adapter
-    private lateinit var suggestionAdapter: SuggestionAdapter
+    // Autocomplete popup
+    private var autocompletePopup: CommandAutocompletePopup? = null
+    private var isAtTriggerActive = false
+    private var atStartPosition = -1
+    private var atCursorPosition = -1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -83,10 +65,8 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         setupTextInput()
-        setupSuggestionCarousel()
         setupClickListeners()
         checkPermissions()
-        startSuggestionRotation()
     }
 
     private fun setupTextInput() {
@@ -94,10 +74,14 @@ class MainActivity : AppCompatActivity() {
         binding.statusText.text = getString(R.string.enter_command)
         binding.commandText.visibility = View.GONE
 
-        // Set up text change listener on the input
+        // Set up text change listener on the input for @ autocomplete
         binding.commandInput.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                handleAtTrigger(s, start, before, count)
+            }
+
             override fun afterTextChanged(s: Editable?) {
                 // Enable send button when there's text
                 binding.sendButton.isEnabled = s?.trim()?.isNotEmpty() == true
@@ -111,22 +95,128 @@ class MainActivity : AppCompatActivity() {
 
         // Handle enter key on keyboard
         binding.commandInput.setOnEditorActionListener { _, actionId, _ ->
-            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEND) {
+            if (actionId == EditorInfo.IME_ACTION_SEND) {
                 submitCommand()
                 true
             } else {
                 false
             }
         }
+
+        // Handle back key to dismiss autocomplete
+        binding.commandInput.setOnKeyListener { _, keyCode, event ->
+            if (keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
+                if (autocompletePopup?.isShowing == true) {
+                    autocompletePopup?.dismiss()
+                    return@setOnKeyListener true
+                }
+            }
+            false
+        }
     }
 
-    private fun setupSuggestionCarousel() {
-        suggestionAdapter = SuggestionAdapter(commandSuggestions) { suggestion ->
-            // When a suggestion is clicked, populate the input field
-            binding.commandInput.setText(suggestion)
-            binding.commandInput.setSelection(suggestion.length)
+    private fun handleAtTrigger(text: CharSequence?, start: Int, before: Int, count: Int) {
+        val input = text.toString()
+
+        // Check if we're in an @ trigger
+        if (!isAtTriggerActive) {
+            // Look for @ that was just typed (count == 1 means one char added)
+            if (count == 1 && start < input.length && input[start] == '@') {
+                // Check if @ is at start or preceded by space
+                if (start == 0 || input[start - 1].isWhitespace()) {
+                    activateAtTrigger(start, start + 1, "")
+                }
+            }
+        } else {
+            // We're in an @ trigger, check if we should update or dismiss
+            val atIndex = atStartPosition
+            val cursorPos = binding.commandInput.selectionStart
+
+            // If @ was deleted or we moved before it, dismiss
+            if (atIndex >= input.length || input[atIndex] != '@' || cursorPos <= atIndex) {
+                deactivateAtTrigger()
+                return
+            }
+
+            // Extract query after @
+            val queryStart = atIndex + 1
+            val query = if (cursorPos > queryStart) {
+                input.substring(queryStart, cursorPos.coerceAtMost(input.length))
+            } else {
+                ""
+            }
+
+            // Check for space - if user types space after @, could be end of trigger
+            // But we allow spaces in multi-word commands like "open chrome"
+            // Dismiss on non-word characters that aren't space (like punctuation)
+            if (cursorPos > queryStart && cursorPos <= input.length) {
+                val lastChar = input[cursorPos - 1]
+                if (!lastChar.isLetterOrDigit() && lastChar != ' ' && lastChar != '_' && lastChar != '-') {
+                    // Don't dismiss immediately, let the filter handle it
+                }
+            }
+
+            updateAtTrigger(query, cursorPos)
         }
-        binding.suggestionCarousel.adapter = suggestionAdapter
+    }
+
+    private fun activateAtTrigger(atPos: Int, cursorPos: Int, query: String) {
+        isAtTriggerActive = true
+        atStartPosition = atPos
+        atCursorPosition = cursorPos
+
+        autocompletePopup = CommandAutocompletePopup(
+            context = this,
+            anchorView = binding.commandInput,
+            onCommandSelected = { command, atPosition, cursorPosition ->
+                insertCommandSyntax(command, atPosition, cursorPosition)
+            },
+            onDismiss = { deactivateAtTrigger() }
+        )
+        autocompletePopup?.show(atPos, cursorPos, query)
+    }
+
+    private fun updateAtTrigger(query: String, cursorPos: Int) {
+        atCursorPosition = cursorPos
+        autocompletePopup?.updateQuery(query)
+    }
+
+    private fun deactivateAtTrigger() {
+        isAtTriggerActive = false
+        atStartPosition = -1
+        atCursorPosition = -1
+        autocompletePopup?.dismiss()
+        autocompletePopup = null
+    }
+
+    private fun insertCommandSyntax(command: CommandRegistry.Command, atPosition: Int, cursorPosition: Int) {
+        val input = binding.commandInput
+        val editable = input.text
+        val currentText = editable.toString()
+
+        // Calculate the range to replace: from @ to cursor
+        val replaceStart = atPosition
+        val replaceEnd = cursorPosition.coerceAtMost(currentText.length)
+
+        // Build the replacement text: command syntax without the trigger (since @ is already there)
+        // Actually, we want to replace @query with the full command syntax
+        // But the user might have typed something like "@ope" and selected "open <app name>"
+        // We should insert the full syntax, but preserve any text after the cursor
+
+        val afterText = if (replaceEnd < currentText.length) {
+            currentText.substring(replaceEnd)
+        } else {
+            ""
+        }
+
+        val newText = currentText.substring(0, replaceStart) + command.syntax + " " + afterText
+        input.setText(newText)
+
+        // Position cursor after the inserted syntax
+        val newCursorPos = replaceStart + command.syntax.length + 1
+        input.setSelection(newCursorPos.coerceAtMost(newText.length))
+
+        deactivateAtTrigger()
     }
 
     private fun setupClickListeners() {
@@ -148,53 +238,19 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun startSuggestionRotation() {
-        // Rotate suggestions every 4 seconds with animation
-        val runnable = object : Runnable {
-            override fun run() {
-                runOnUiThread { rotateSuggestion() }
-                binding.root.postDelayed(this, 4000)
-            }
-        }
-        binding.root.postDelayed(runnable, 4000)
-    }
-
-    private fun rotateSuggestion() {
-        val nextIndex = (currentSuggestionIndex + 1) % commandSuggestions.size
-
-        // Fade out current suggestion
-        val fadeOut = AlphaAnimation(1f, 0f)
-        fadeOut.duration = 300
-        fadeOut.setAnimationListener(object : Animation.AnimationListener {
-            override fun onAnimationStart(animation: Animation?) {}
-            override fun onAnimationEnd(animation: Animation?) {
-                // Update text
-                currentSuggestionIndex = nextIndex
-                suggestionAdapter.notifyItemChanged(currentSuggestionIndex)
-
-                // Scroll to the new suggestion
-                binding.suggestionCarousel.smoothScrollToPosition(currentSuggestionIndex)
-
-                // Fade in new suggestion
-                val fadeIn = AlphaAnimation(0f, 1f)
-                fadeIn.duration = 300
-                binding.suggestionCarousel.startAnimation(fadeIn)
-            }
-            override fun onAnimationRepeat(animation: Animation?) {}
-        })
-        binding.suggestionCarousel.startAnimation(fadeOut)
-    }
-
     private fun submitCommand() {
         val input = binding.commandInput.text.toString()
         val trimmed = input.trim()
         if (trimmed.isEmpty()) return
 
+        // Dismiss autocomplete if showing
+        deactivateAtTrigger()
+
         // Clear input
         binding.commandInput.setText("")
 
         // Show feedback
-        binding.commandText.text = "Heard: $trimmed"
+        binding.commandText.text = "Sent: $trimmed"
         binding.commandText.visibility = View.VISIBLE
 
         speak("Processing: $trimmed")
@@ -210,7 +266,7 @@ class MainActivity : AppCompatActivity() {
             lowerCommand.contains("whatsapp") || lowerCommand.contains("message") -> {
                 extractContactAndMessage(lowerCommand)?.let { (contact, message) -> resolveAndSendWhatsApp(contact, message) }
             }
-            lowerCommand.contains("search") || lowerCommand.contains("google") || lowerCommand.contains("look up") -> {
+            lowerCommand.contains("search") || lowerCommand.contains("google") || lowerCommand.contains("look up") || lowerCommand.contains("find") -> {
                 extractSearchQuery(lowerCommand)?.let { searchWeb(it) }
             }
             else -> {
@@ -549,48 +605,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        autocompletePopup?.dismiss()
         super.onDestroy()
     }
 
-    // ===== SUGGESTION ADAPTER =====
-
-    inner class SuggestionAdapter(
-        private val suggestions: List<String>,
-        private val onClick: (String) -> Unit
-    ) : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewHolder>() {
-
-        inner class SuggestionViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-            val textView: TextView = view.findViewById(android.R.id.text1)
+    override fun onBackPressed() {
+        if (autocompletePopup?.isShowing == true) {
+            autocompletePopup?.dismiss()
+        } else {
+            super.onBackPressed()
         }
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SuggestionViewHolder {
-            val view = LayoutInflater.from(parent.context).inflate(
-                android.R.layout.simple_list_item_1, parent, false
-            )
-            // Style the suggestion items
-            val textView = view.findViewById<TextView>(android.R.id.text1)
-            textView.textSize = 14f
-            textView.setTextColor(ContextCompat.getColor(parent.context, R.color.primary_text))
-            textView.setPadding(24, 16, 24, 16)
-            textView.gravity = android.view.Gravity.CENTER_VERTICAL
-            textView.setBackgroundResource(R.drawable.suggestion_item_bg)
-            return SuggestionViewHolder(view)
-        }
-
-        override fun onBindViewHolder(holder: SuggestionViewHolder, position: Int) {
-            val suggestion = suggestions[position]
-            holder.textView.text = suggestion
-            holder.itemView.setOnClickListener { onClick(suggestion) }
-
-            // Add subtle animation on bind
-            holder.itemView.alpha = 0f
-            holder.itemView.animate()
-                .alpha(1f)
-                .setDuration(300)
-                .setStartDelay(position * 50L)
-                .start()
-        }
-
-        override fun getItemCount() = suggestions.size
     }
 }

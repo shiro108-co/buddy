@@ -18,4 +18,5 @@
     <color name="on_background">#212121</color>
     <color name="on_surface">#212121</color>
     <color name="on_error">#FFFFFF</color>
+    <color name="primary_alpha_10">#1A6200EE</color>
 </resources>
