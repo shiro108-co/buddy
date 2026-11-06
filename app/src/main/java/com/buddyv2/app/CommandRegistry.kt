@@ -1,11 +1,33 @@
 package com.buddyv2.app
 
 /**
- * Registry of all available commands in Buddy V2.
- * This replaces hardcoded suggestion lists with a single source of truth.
+ * Central registry for all @ commands.
+ * Single source of truth for autocomplete suggestions and command metadata.
+ * EXACTLY 4 ENTRIES: Open apps, Call, WhatsApp, Search
  */
 object CommandRegistry {
 
+    /**
+     * Command category for grouping in autocomplete.
+     */
+    enum class Category(val label: String, val colorRes: Int) {
+        APPS("Apps", R.color.category_apps),
+        COMMUNICATION("Communication", R.color.category_communication),
+        SEARCH("Search", R.color.category_search),
+        SYSTEM("System", R.color.category_system)
+    }
+
+    /**
+     * Command definition.
+     * @property id Unique identifier
+     * @property name Display name (e.g., "Open app")
+     * @property syntax Syntax hint (e.g., "open <app name>")
+     * @property description Brief description
+     * @property iconRes Drawable resource for icon
+     * @property category Category for grouping
+     * @property example Example usage
+     * @property trigger The @ trigger keyword (e.g., "open")
+     */
     data class Command(
         val id: String,
         val name: String,
@@ -13,123 +35,85 @@ object CommandRegistry {
         val description: String,
         val iconRes: Int,
         val category: Category,
-        val example: String
-    ) {
-        val trigger: String = syntax.split(" ")[0]
-    }
+        val example: String,
+        val trigger: String = id
+    )
 
-    enum class Category(val label: String, val order: Int) {
-        APPS("Apps", 1),
-        COMMUNICATION("Communication", 2),
-        SEARCH("Search", 3),
-        SYSTEM("System", 4)
-    }
-
+    // ===== EXACTLY 4 COMMANDS =====
     private val commands = listOf(
-        // Apps
+        // 1. OPEN APPS - single entry, handles app launching
         Command(
             id = "open_app",
-            name = "Open App",
+            name = "Open app",
             syntax = "open <app name>",
             description = "Launch an installed application",
-            iconRes = android.R.drawable.ic_menu_add,
+            iconRes = android.R.drawable.ic_menu_agenda,
             category = Category.APPS,
-            example = "open chrome"
-        ),
-        Command(
-            id = "launch_app",
-            name = "Launch App",
-            syntax = "launch <app name>",
-            description = "Launch an installed application (alias)",
-            iconRes = android.R.drawable.ic_menu_add,
-            category = Category.APPS,
-            example = "launch camera"
+            example = "@open chrome",
+            trigger = "open"
         ),
 
-        // Communication - Calls
+        // 2. CALL - single entry, backed by actual contact-call functionality
         Command(
             id = "call_contact",
-            name = "Call Contact",
+            name = "Call contact",
             syntax = "call <contact name>",
-            description = "Make a phone call to a contact",
+            description = "Call a contact from your phonebook",
             iconRes = android.R.drawable.ic_menu_call,
             category = Category.COMMUNICATION,
-            example = "call mom"
-        ),
-        Command(
-            id = "dial_contact",
-            name = "Dial Contact",
-            syntax = "dial <contact name>",
-            description = "Dial a contact (alias for call)",
-            iconRes = android.R.drawable.ic_menu_call,
-            category = Category.COMMUNICATION,
-            example = "dial dad"
-        ),
-        Command(
-            id = "call_number",
-            name = "Call Number",
-            syntax = "call <phone number>",
-            description = "Call a phone number directly",
-            iconRes = android.R.drawable.ic_menu_call,
-            category = Category.COMMUNICATION,
-            example = "call +15551234567"
+            example = "@call John Doe",
+            trigger = "call"
         ),
 
-        // Communication - WhatsApp
+        // 3. WHATSAPP - single entry, both "whatsapp" and "message" resolve here
         Command(
             id = "whatsapp_contact",
-            name = "WhatsApp Contact",
+            name = "WhatsApp contact",
             syntax = "whatsapp <contact> <message>",
             description = "Send WhatsApp message to a contact",
             iconRes = android.R.drawable.ic_menu_send,
             category = Category.COMMUNICATION,
-            example = "whatsapp john hello there"
-        ),
-        Command(
-            id = "message_contact",
-            name = "Message Contact",
-            syntax = "message <contact> <message>",
-            description = "Send WhatsApp message (alias)",
-            iconRes = android.R.drawable.ic_menu_send,
-            category = Category.COMMUNICATION,
-            example = "message sarah meeting at 3"
+            example = "@whatsapp John Hello!",
+            trigger = "whatsapp"
         ),
 
-        // Search
+        // 4. SEARCH - single entry, aliases: search, google, look up, find
         Command(
-            id = "search",
-            name = "Search",
+            id = "search_web",
+            name = "Search web",
             syntax = "search <query>",
-            description = "Search the web via Google (aliases: google, look up, find)",
+            description = "Search the web via Google",
             iconRes = android.R.drawable.ic_menu_search,
             category = Category.SEARCH,
-            example = "search weather today"
+            example = "@search weather today",
+            trigger = "search"
         )
     )
 
+    /** All registered commands (exactly 4). */
     val allCommands: List<Command> = commands
 
-    fun getCommandsByCategory(): Map<Category, List<Command>> {
-        return commands.groupBy { it.category }
-    }
-
+    /**
+     * Filter commands by query string.
+     * Matches against name, syntax, description, trigger, and example.
+     */
     fun filterCommands(query: String): List<Command> {
-        if (query.isBlank()) return commands
+        if (query.isBlank()) return allCommands
+
         val lowerQuery = query.lowercase()
-        return commands.filter { cmd ->
+        return allCommands.filter { cmd ->
             cmd.name.lowercase().contains(lowerQuery) ||
-            cmd.syntax.lowercase().contains(lowerQuery) ||
-            cmd.description.lowercase().contains(lowerQuery) ||
-            cmd.trigger.lowercase().contains(lowerQuery) ||
-            cmd.example.lowercase().contains(lowerQuery)
+                    cmd.syntax.lowercase().contains(lowerQuery) ||
+                    cmd.description.lowercase().contains(lowerQuery) ||
+                    cmd.trigger.lowercase().contains(lowerQuery) ||
+                    cmd.example.lowercase().contains(lowerQuery)
         }
     }
 
-    fun getCommandById(id: String): Command? {
-        return commands.find { it.id == id }
-    }
-
-    fun getCommandByTrigger(trigger: String): Command? {
-        return commands.find { it.trigger.equals(trigger, ignoreCase = true) }
+    /**
+     * Find command by trigger keyword.
+     */
+    fun findByTrigger(trigger: String): Command? {
+        return allCommands.find { it.trigger == trigger.lowercase() }
     }
 }
