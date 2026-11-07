@@ -29,6 +29,9 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleObserver
+import androidx.lifecycle.OnLifecycleEvent
 import androidx.recyclerview.widget.RecyclerView
 import com.buddyv2.app.databinding.ActivityMainBinding
 import java.util.Locale
@@ -54,12 +57,19 @@ class MainActivity : AppCompatActivity() {
     private val OVERLAY_PERMISSION_REQUEST_CODE = 101
     private val CALL_PERMISSION_REQUEST_CODE = 102
     private val CONTACTS_PERMISSION_REQUEST_CODE = 103
+    private val MIC_PERMISSION_REQUEST_CODE = 200
 
     // Autocomplete popup
     private var autocompletePopup: CommandAutocompletePopup? = null
     private var isSlashTriggerActive = false
     private var slashStartPosition = -1
     private var slashCursorPosition = -1
+
+    // Voice components
+    private lateinit var conversationContext: ConversationContext
+    private lateinit var intentParser: IntentParser
+    private lateinit var voiceUIController: VoiceUIController
+    private lateinit var voiceController: VoiceController
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -69,9 +79,92 @@ class MainActivity : AppCompatActivity() {
         // Setup WindowInsets handling for keyboard (IME) positioning
         setupWindowInsets()
 
+        // Initialize voice components
+        initializeVoice()
+
         setupTextInput()
         setupClickListeners()
         checkPermissions()
+    }
+
+    private fun initializeVoice() {
+        conversationContext = ConversationContext()
+        intentParser = IntentParser(conversationContext)
+        voiceUIController = VoiceUIController(
+            context = this,
+            micButton = binding.micButton,
+            statusText = binding.statusText,
+            commandText = binding.commandText,
+            commandInput = binding.commandInput
+        )
+
+        voiceController = VoiceController(
+            activity = this,
+            uiController = voiceUIController,
+            intentParser = intentParser,
+            onIntentParsed = { intent -> handleVoiceIntent(intent) },
+            onTextRecognized = { text -> /* partial results shown in UI */ },
+            onResultReady = { message -> onVoiceResult(message) },
+            onError = { error -> onVoiceError(error) }
+        )
+
+        // Register lifecycle observer for voice controller
+        lifecycle.addObserver(voiceController)
+
+        // Set up mic button click listener
+        binding.micButton.setOnClickListener { voiceController.onMicButtonClick() }
+    }
+
+    private fun handleVoiceIntent(intent: IntentParser.Intent) {
+        when (intent) {
+            is IntentParser.Intent.OpenApp -> {
+                conversationContext.setLastAction("open")
+                extractAppName(intent.appName)?.let { openApp(it) }
+            }
+            is IntentParser.Intent.CallContact -> {
+                conversationContext.setLastAction("call")
+                extractContactName(intent.contactName)?.let { resolveAndCall(it) }
+            }
+            is IntentParser.Intent.WhatsAppMessage -> {
+                conversationContext.setLastAction("whatsapp")
+                // Use contact-aware parsing for the full remaining text
+                extractContactAndMessage(intent.contactName)?.let { (contact, message) ->
+                    resolveAndSendWhatsApp(contact, message)
+                }
+            }
+            is IntentParser.Intent.SearchWeb -> {
+                conversationContext.setLastAction("search")
+                extractSearchQuery(intent.query)?.let { searchWeb(it) }
+            }
+            is IntentParser.Intent.Help -> {
+                showHelp(intent.topic ?: "")
+            }
+            IntentParser.Intent.StopSpeaking -> {
+                voiceController.stopSpeaking()
+            }
+            IntentParser.Intent.RepeatLast -> {
+                // Could implement repeat last response
+                onVoiceError("Repeat not yet implemented")
+            }
+            is IntentParser.Intent.Unknown -> {
+                // Treat unknown as search query
+                extractSearchQuery(intent.originalText)?.let { searchWeb(it) }
+            }
+        }
+    }
+
+    private fun onVoiceResult(message: String) {
+        // Add to conversation context
+        // Note: We need the original recognized text for context
+        // For now, we'll add the result message
+        conversationContext.addExchange("", message)
+        showResult(message)
+    }
+
+    private fun onVoiceError(error: String) {
+        showError(error)
+        // Return to idle state after error
+        voiceUIController.setState(VoiceUIController.VoiceState.IDLE)
     }
 
     private fun setupWindowInsets() {
@@ -111,7 +204,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupTextInput() {
         // Set initial status
-        binding.statusText.text = getString(R.string.enter_command)
+        binding.statusText.text = getString(R.string.tap_mic_to_speak)
         binding.commandText.visibility = View.GONE
 
         // Set up text change listener on the input for / autocomplete
@@ -507,6 +600,9 @@ class MainActivity : AppCompatActivity() {
                 ""
             }
 
+            // Store for conversation context
+            conversationContext.setLastMatchedContact(matchedContact)
+
             return Pair(matchedContact, message)
         }
 
@@ -878,17 +974,24 @@ class MainActivity : AppCompatActivity() {
                     showError("Contacts permission denied")
                 }
             }
+            MIC_PERMISSION_REQUEST_CODE -> {
+                // Voice controller handles its own permission result
+                voiceController.onRequestPermissionsResult(requestCode, grantResults)
+            }
         }
     }
 
     override fun onDestroy() {
         autocompletePopup?.dismiss()
+        voiceUIController.cleanup()
         super.onDestroy()
     }
 
     override fun onBackPressed() {
         if (autocompletePopup?.isShowing == true) {
             autocompletePopup?.dismiss()
+        } else if (voiceUIController.getState() != VoiceUIController.VoiceState.IDLE) {
+            voiceController.cancelAll()
         } else {
             super.onBackPressed()
         }
