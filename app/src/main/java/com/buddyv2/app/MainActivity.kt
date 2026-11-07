@@ -152,8 +152,7 @@ class MainActivity : AppCompatActivity() {
     private fun handleVoiceIntent(intent: IntentParser.Intent) {
         diagnosticLogger.log("DIAGNOSTIC: handleVoiceIntent() called with intent = $intent")
         Log.d(TAG, "DIAGNOSTIC: handleVoiceIntent() called with intent = $intent")
-        // Mark that a voice action is pending so result will be reported to voice controller
-        voiceController.markVoiceActionPending()
+        // voiceActionPending is already set to true in onResults(), no need to mark again
 
         when (intent) {
             is IntentParser.Intent.OpenApp -> {
@@ -1016,6 +1015,8 @@ class MainActivity : AppCompatActivity() {
         } else {
             pendingCallNumber = phoneNumber
             ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.CALL_PHONE), CALL_PERMISSION_REQUEST_CODE)
+            // Report error to complete voice action cycle
+            showError("Call permission required")
         }
     }
 
