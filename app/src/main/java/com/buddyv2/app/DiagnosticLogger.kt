@@ -1,8 +1,8 @@
 package com.buddyv2.app
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.util.Log
-import com.buddyv2.app.BuildConfig
 import java.io.File
 import java.io.FileWriter
 import java.io.IOException
@@ -32,13 +32,23 @@ class DiagnosticLogger(private val context: Context) {
         logFile = File(context.filesDir, LOG_FILE_NAME)
         log("=== DiagnosticLogger initialized ===")
         log("Log file: ${logFile.absolutePath}")
-        log("App version: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+        log("App version: ${getAppVersion()}")
     }
 
     /** Enable or disable logging */
     fun setEnabled(enabled: Boolean) {
         isEnabled = enabled
         log("Logging ${if (enabled) "ENABLED" else "DISABLED"}")
+    }
+
+    /** Get app version from PackageManager */
+    private fun getAppVersion(): String {
+        return try {
+            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            "${packageInfo.versionName} (${packageInfo.versionCode})"
+        } catch (e: PackageManager.NameNotFoundException) {
+            "Unknown"
+        }
     }
 
     /** Log a diagnostic event with timestamp */
