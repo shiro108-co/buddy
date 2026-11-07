@@ -116,6 +116,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleVoiceIntent(intent: IntentParser.Intent) {
+        // Mark that a voice action is pending so result will be reported to voice controller
+        voiceController.markVoiceActionPending()
+
         when (intent) {
             is IntentParser.Intent.OpenApp -> {
                 conversationContext.setLastAction("open")
@@ -471,6 +474,8 @@ class MainActivity : AppCompatActivity() {
         binding.commandText.text = message
         binding.commandText.visibility = View.VISIBLE
         // No Toast - result is shown in the conversation area
+        // Report to voice controller if a voice action is pending
+        voiceController.reportVoiceResult(message)
     }
 
     private fun showError(message: String) {
@@ -479,6 +484,8 @@ class MainActivity : AppCompatActivity() {
         binding.commandText.visibility = View.VISIBLE
         // Also show as Toast for immediate visibility of errors
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+        // Report to voice controller if a voice action is pending
+        voiceController.reportVoiceResult(message)
     }
 
     private fun extractAppName(command: String): String? {

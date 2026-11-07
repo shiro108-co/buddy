@@ -31,6 +31,7 @@ class VoiceController(
 
     private var isMicPermissionGranted = false
     private var pendingIntent: IntentParser.Intent? = null
+    private var voiceActionPending = false
 
     companion object {
         private const val TAG = "VoiceController"
@@ -125,6 +126,20 @@ class VoiceController(
         uiController.setState(VoiceUIController.VoiceState.IDLE)
     }
 
+    /** Called by MainActivity when a voice-triggered action completes with a result message. */
+    fun reportVoiceResult(resultMessage: String) {
+        if (!voiceActionPending) return
+        voiceActionPending = false
+        Log.d(TAG, "Voice action completed: $resultMessage")
+        onResultReady(resultMessage)
+        speakResponse(resultMessage)
+    }
+
+    /** Called by MainActivity to indicate a voice action is starting. */
+    fun markVoiceActionPending() {
+        voiceActionPending = true
+    }
+
     // SpeechRecognizerManager.RecognitionCallback implementation
     override fun onReadyForSpeech() {
         // Already handled by UI state change
@@ -140,9 +155,12 @@ class VoiceController(
     }
 
     override fun onResults(finalText: String) {
+        Log.d(TAG, "onResults: '$finalText'")
         uiController.setState(VoiceUIController.VoiceState.PROCESSING)
         val intent = intentParser.parse(finalText)
         pendingIntent = intent
+        // Mark that a voice action is pending so reportVoiceResult knows to complete it
+        voiceActionPending = true
         onIntentParsed(intent)
     }
 
@@ -153,6 +171,7 @@ class VoiceController(
     override fun onError(errorCode: Int, errorMessage: String) {
         Log.w(TAG, "Speech error: $errorCode - $errorMessage")
         uiController.setState(VoiceUIController.VoiceState.IDLE)
+        voiceActionPending = false
         when (errorCode) {
             SpeechRecognizer.ERROR_NO_MATCH -> onError("No speech detected. Try again.")
             SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> onError("Speech timed out. Try again.")
@@ -198,6 +217,7 @@ class VoiceController(
     fun cancelAll() {
         speechRecognizerManager.cancel()
         textToSpeechManager.stop()
+        voiceActionPending = false
         uiController.setState(VoiceUIController.VoiceState.IDLE)
     }
 }
