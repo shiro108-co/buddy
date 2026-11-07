@@ -8,8 +8,10 @@ import android.util.Log
  */
 class ConversationContext {
 
-    private const val TAG = "ConversationContext"
-    private const val MAX_HISTORY = 10
+    companion object {
+        private const val TAG = "ConversationContext"
+        private const val MAX_HISTORY = 10
+    }
 
     data class Exchange(
         val userInput: String,

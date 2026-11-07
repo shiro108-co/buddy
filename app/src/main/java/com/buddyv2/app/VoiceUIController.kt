@@ -77,15 +77,15 @@ class VoiceUIController(
 
         // Start pulse animation on mic button
         pulseAnimator = ObjectAnimator.ofFloat(micButton, "scaleX", 1f, 1.15f)
-        pulseAnimator.duration = 800
-        pulseAnimator.repeatCount = ValueAnimator.INFINITE
-        pulseAnimator.repeatMode = ValueAnimator.REVERSE
-        pulseAnimator.interpolator = AccelerateDecelerateInterpolator()
-        pulseAnimator.addUpdateListener { animation ->
+        pulseAnimator?.duration = 800
+        pulseAnimator?.repeatCount = ValueAnimator.INFINITE
+        pulseAnimator?.repeatMode = ValueAnimator.REVERSE
+        pulseAnimator?.interpolator = AccelerateDecelerateInterpolator()
+        pulseAnimator?.addUpdateListener { animation ->
             val scale = animation.animatedValue as Float
             micButton.scaleY = scale
         }
-        pulseAnimator.start()
+        pulseAnimator?.start()
     }
 
     private fun applyProcessingState() {
@@ -113,11 +113,11 @@ class VoiceUIController(
 
         // Gentle pulse while speaking
         pulseAnimator = ObjectAnimator.ofFloat(micButton, "alpha", 1f, 0.6f)
-        pulseAnimator.duration = 1000
-        pulseAnimator.repeatCount = ValueAnimator.INFINITE
-        pulseAnimator.repeatMode = ValueAnimator.REVERSE
-        pulseAnimator.interpolator = AccelerateDecelerateInterpolator()
-        pulseAnimator.start()
+        pulseAnimator?.duration = 1000
+        pulseAnimator?.repeatCount = ValueAnimator.INFINITE
+        pulseAnimator?.repeatMode = ValueAnimator.REVERSE
+        pulseAnimator?.interpolator = AccelerateDecelerateInterpolator()
+        pulseAnimator?.start()
     }
 
     fun setRecognizedText(text: String) {

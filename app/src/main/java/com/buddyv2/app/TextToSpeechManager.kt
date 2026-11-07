@@ -2,6 +2,7 @@ package com.buddyv2.app
 
 import android.content.Context
 import android.os.Build
+import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
@@ -109,7 +110,7 @@ class TextToSpeechManager(private val context: Context) {
         isSpeaking = true
 
         val utteranceId = "buddy_${utterance.id}"
-        val params = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        val params: Bundle? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             Bundle().apply { putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, utteranceId) }
         } else {
             null
@@ -134,9 +135,6 @@ class TextToSpeechManager(private val context: Context) {
         override fun onDone(utteranceId: String) {
             Log.d(TAG, "Utterance done: $utteranceId")
             isSpeaking = false
-            // Find and notify the callback for this utterance
-            // Since we process sequentially, the current utterance is the one that just finished
-            // We'll use a simpler approach - notify the next callback in queue processing
             processQueue()
         }
 

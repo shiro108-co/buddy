@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.pm.PackageManager
+import android.speech.SpeechRecognizer
 import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -23,7 +24,7 @@ class VoiceController(
     private val onTextRecognized: (String) -> Unit,
     private val onResultReady: (String) -> Unit,
     private val onError: (String) -> Unit
-) : LifecycleObserver {
+) : LifecycleObserver, SpeechRecognizerManager.RecognitionCallback {
 
     private val speechRecognizerManager: SpeechRecognizerManager
     private val textToSpeechManager: TextToSpeechManager
@@ -37,9 +38,7 @@ class VoiceController(
     }
 
     init {
-        speechRecognizerManager = SpeechRecognizerManager(activity) { callback ->
-            handleSpeechCallback(callback)
-        }
+        speechRecognizerManager = SpeechRecognizerManager(activity, this)
         textToSpeechManager = TextToSpeechManager(activity)
     }
 
@@ -126,40 +125,42 @@ class VoiceController(
         uiController.setState(VoiceUIController.VoiceState.IDLE)
     }
 
-    private fun handleSpeechCallback(callback: SpeechRecognizerManager.RecognitionCallback) {
-        when (callback) {
-            is SpeechRecognizerManager.RecognitionCallback.OnReadyForSpeech -> {
-                // Already handled by UI state change
+    // SpeechRecognizerManager.RecognitionCallback implementation
+    override fun onReadyForSpeech() {
+        // Already handled by UI state change
+    }
+
+    override fun onBeginningOfSpeech() {
+        // User started speaking
+    }
+
+    override fun onPartialResults(partialText: String) {
+        uiController.setRecognizedText(partialText)
+        onTextRecognized(partialText)
+    }
+
+    override fun onResults(finalText: String) {
+        uiController.setState(VoiceUIController.VoiceState.PROCESSING)
+        val intent = intentParser.parse(finalText)
+        pendingIntent = intent
+        onIntentParsed(intent)
+    }
+
+    override fun onEndOfSpeech() {
+        // Speech ended, waiting for results
+    }
+
+    override fun onError(errorCode: Int, errorMessage: String) {
+        Log.w(TAG, "Speech error: $errorCode - $errorMessage")
+        uiController.setState(VoiceUIController.VoiceState.IDLE)
+        when (errorCode) {
+            SpeechRecognizer.ERROR_NO_MATCH -> onError("No speech detected. Try again.")
+            SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> onError("Speech timed out. Try again.")
+            SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> {
+                isMicPermissionGranted = false
+                onError("Microphone permission denied")
             }
-            is SpeechRecognizerManager.RecognitionCallback.OnBeginningOfSpeech -> {
-                // User started speaking
-            }
-            is SpeechRecognizerManager.RecognitionCallback.OnPartialResults -> {
-                uiController.setRecognizedText(callback.partialText)
-                onTextRecognized(callback.partialText)
-            }
-            is SpeechRecognizerManager.RecognitionCallback.OnResults -> {
-                uiController.setState(VoiceUIController.VoiceState.PROCESSING)
-                val intent = intentParser.parse(callback.finalText)
-                pendingIntent = intent
-                onIntentParsed(intent)
-            }
-            is SpeechRecognizerManager.RecognitionCallback.OnEndOfSpeech -> {
-                // Speech ended, waiting for results
-            }
-            is SpeechRecognizerManager.RecognitionCallback.OnError -> {
-                Log.w(TAG, "Speech error: ${callback.errorMessage}")
-                uiController.setState(VoiceUIController.VoiceState.IDLE)
-                when (callback.errorCode) {
-                    SpeechRecognizerManager.ERROR_NO_MATCH -> onError("No speech detected. Try again.")
-                    SpeechRecognizerManager.ERROR_SPEECH_TIMEOUT -> onError("Speech timed out. Try again.")
-                    SpeechRecognizerManager.ERROR_INSUFFICIENT_PERMISSIONS -> {
-                        isMicPermissionGranted = false
-                        onError("Microphone permission denied")
-                    }
-                    else -> onError(callback.errorMessage)
-                }
-            }
+            else -> onError(errorMessage)
         }
     }
 
