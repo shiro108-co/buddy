@@ -33,6 +33,7 @@
     <string name="contact_not_found">Contact "%s" not found.</string>
     <string name="enter_command">Enter a command</string>
     <string name="error_occurred">Error: %s</string>
+    <string name="hold_to_speak">Hold to speak</string>
     <string name="listening_indicator">Listening…</string>
     <string name="mic_permission_required">Microphone permission required</string>
     <string name="multiple_contacts_found">Multiple contacts match "%s". Please be more specific.</string>
@@ -40,11 +41,12 @@
     <string name="permission_contacts_denied">Contacts permission denied. Cannot resolve contact names.</string>
     <string name="permission_contacts_rationale">Contacts permission is required to call or message people by name.</string>
     <string name="processing_indicator">Understanding…</string>
+    <string name="release_to_send">Release to send</string>
     <string name="send_button_desc">Send command</string>
     <string name="speaking_hint">Speak now…</string>
     <string name="speaking_indicator">Speaking…</string>
     <string name="speech_timed_out">Speech timed out. Try again.</string>
-    <string name="tap_mic_to_speak">Tap microphone to speak</string>
+    <string name="tap_mic_to_speak">Press and hold microphone to speak</string>
     <string name="type_command_hint">Type /command (e.g., /open chrome, /call mom, /whatsapp john hello, /search weather, /help)</string>
     <string name="type_or_speak_command">Type or speak a command</string>
     <string name="voice_processing">Processing</string>

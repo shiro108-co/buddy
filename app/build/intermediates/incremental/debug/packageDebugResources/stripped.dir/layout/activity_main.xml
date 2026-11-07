@@ -75,52 +75,60 @@
         android:id="@+id/inputContainer"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
+        android:orientation="vertical"
         android:gravity="center_vertical"
         android:padding="12dp"
         android:background="@drawable/rounded_bg"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginBottom="16dp">
+        android:layout_marginBottom="16dp"
+        app:layout_constraintEnd_toEndOf="parent">
 
-        <ImageButton
-            android:id="@+id/micButton"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:src="@android:drawable/ic_btn_speak_now"
-            android:background="@drawable/circle_bg"
-            android:contentDescription="@string/voice_start_listening"
-            android:scaleType="centerInside"
-            android:padding="12dp"/>
-
-        <EditText
-            android:id="@+id/commandInput"
-            android:layout_width="0dp"
+        <!-- Input row -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:hint="@string/type_or_speak_command"
-            android:textSize="16sp"
-            android:textColor="@color/primary_text"
-            android:textColorHint="@color/secondary_text"
-            android:background="@android:color/transparent"
-            android:maxLines="1"
-            android:inputType="text"
-            android:imeOptions="actionSend"
-            android:windowSoftInputMode="adjustResize"
-            android:layout_marginStart="8dp"
-            android:layout_marginEnd="8dp"/>
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
-        <ImageButton
-            android:id="@+id/sendButton"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:src="@android:drawable/ic_menu_send"
-            android:background="@drawable/circle_bg"
-            android:contentDescription="@string/send_button_desc"
-            android:scaleType="centerInside"
-            android:padding="12dp"/>
+            <ImageButton
+                android:id="@+id/micButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@android:drawable/ic_btn_speak_now"
+                android:background="@drawable/circle_bg"
+                android:contentDescription="@string/voice_start_listening"
+                android:scaleType="centerInside"
+                android:padding="12dp"/>
 
+            <EditText
+                android:id="@+id/commandInput"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="@string/type_or_speak_command"
+                android:textSize="16sp"
+                android:textColor="@color/primary_text"
+                android:textColorHint="@color/secondary_text"
+                android:background="@android:color/transparent"
+                android:maxLines="1"
+                android:inputType="text"
+                android:imeOptions="actionSend"
+                android:windowSoftInputMode="adjustResize"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"/>
+
+            <ImageButton
+                android:id="@+id/sendButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@android:drawable/ic_menu_send"
+                android:background="@drawable/circle_bg"
+                android:contentDescription="@string/send_button_desc"
+                android:scaleType="centerInside"
+                android:padding="12dp"/>
+
+        </LinearLayout>
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

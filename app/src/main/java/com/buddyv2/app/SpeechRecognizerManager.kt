@@ -40,8 +40,6 @@ class SpeechRecognizerManager(
     private var hasStartedSpeaking = false
     // Session-specific storage for latest valid partial transcript
     private var latestPartialTranscript: String? = null
-    // Track if this is a barge-in session (started during TTS)
-    private var isBargeInSession = false
 
     companion object {
         private const val TAG = "SpeechRecognizerManager"
@@ -80,18 +78,16 @@ class SpeechRecognizerManager(
         }
     }
 
-    fun startListening(isBargeIn: Boolean = false) {
+    fun startListening() {
         if (isListening) {
             diagnosticLogger.log("Already listening")
             Log.w(TAG, "Already listening")
             return
         }
 
-        isBargeInSession = isBargeIn
-
         // Clear stored partial transcript for new session
         latestPartialTranscript = null
-        diagnosticLogger.log("DIAGNOSTIC: startListening() - cleared latestPartialTranscript for new session, isBargeIn=$isBargeIn")
+        diagnosticLogger.log("DIAGNOSTIC: startListening() - cleared latestPartialTranscript for new session")
 
         val recognizer = speechRecognizer ?: return
 
@@ -130,7 +126,6 @@ class SpeechRecognizerManager(
         diagnosticLogger.log("  EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS = 500")
         diagnosticLogger.log("  EXTRA_LANGUAGE = ${java.util.Locale.getDefault().toLanguageTag()}")
         diagnosticLogger.log("  EXTRA_CALLING_PACKAGE = ${context.packageName}")
-        diagnosticLogger.log("  isBargeIn = $isBargeIn")
 
         Log.d(TAG, "DIAGNOSTIC: Starting recognition with extras:")
         Log.d(TAG, "  EXTRA_LANGUAGE_MODEL = ${RecognizerIntent.LANGUAGE_MODEL_FREE_FORM}")
@@ -142,12 +137,11 @@ class SpeechRecognizerManager(
         Log.d(TAG, "  EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS = 500")
         Log.d(TAG, "  EXTRA_LANGUAGE = ${java.util.Locale.getDefault().toLanguageTag()}")
         Log.d(TAG, "  EXTRA_CALLING_PACKAGE = ${context.packageName}")
-        Log.d(TAG, "  isBargeIn = $isBargeIn")
 
         try {
             recognizer.startListening(intent)
-            diagnosticLogger.log("Started listening - recognizer.startListening() called, isBargeIn=$isBargeIn")
-            Log.d(TAG, "Started listening - recognizer.startListening() called, isBargeIn=$isBargeIn")
+            diagnosticLogger.log("Started listening - recognizer.startListening() called")
+            Log.d(TAG, "Started listening - recognizer.startListening() called")
         } catch (e: Exception) {
             diagnosticLogger.log("Failed to start listening: ${e.message}")
             Log.e(TAG, "Failed to start listening", e)
@@ -174,9 +168,8 @@ class SpeechRecognizerManager(
         Log.d(TAG, "DIAGNOSTIC: cancel() called - recognizer.cancel()")
         speechRecognizer?.cancel()
         isListening = false
-        isBargeInSession = false
         latestPartialTranscript = null
-        diagnosticLogger.log("DIAGNOSTIC: cancel() cleared latestPartialTranscript and isBargeInSession")
+        diagnosticLogger.log("DIAGNOSTIC: cancel() cleared latestPartialTranscript")
         diagnosticLogger.log("Cancelled recognition")
         Log.d(TAG, "Cancelled recognition")
     }

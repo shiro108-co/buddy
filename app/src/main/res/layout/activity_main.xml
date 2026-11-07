@@ -84,35 +84,6 @@
         android:layout_marginBottom="16dp"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- Continuous listening toggle row -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginBottom="8dp">
-
-            <ImageButton
-                android:id="@+id/continuousListeningButton"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:src="@android:drawable/ic_media_play"
-                android:background="@drawable/circle_bg"
-                android:contentDescription="@string/continuous_listening_desc"
-                android:scaleType="centerInside"
-                android:padding="12dp"/>
-
-            <TextView
-                android:id="@+id/continuousListeningText"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/continuous_listening_off"
-                android:textSize="14sp"
-                android:textColor="@color/primary_text"
-                android:layout_marginStart="8dp"/>
-
-        </LinearLayout>
-
         <!-- Input row -->
         <LinearLayout
             android:layout_width="match_parent"

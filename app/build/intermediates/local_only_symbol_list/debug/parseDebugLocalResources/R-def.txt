@@ -53,6 +53,7 @@ string contact_has_no_number
 string contact_not_found
 string enter_command
 string error_occurred
+string hold_to_speak
 string listening_indicator
 string mic_permission_required
 string multiple_contacts_found
@@ -60,6 +61,7 @@ string no_speech_detected
 string permission_contacts_denied
 string permission_contacts_rationale
 string processing_indicator
+string release_to_send
 string send_button_desc
 string speaking_hint
 string speaking_indicator

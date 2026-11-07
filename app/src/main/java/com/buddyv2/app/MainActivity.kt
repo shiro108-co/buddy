@@ -17,6 +17,7 @@ import android.text.TextWatcher
 import android.util.Log
 import android.view.KeyEvent
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
@@ -119,39 +120,33 @@ class MainActivity : AppCompatActivity() {
         // Register lifecycle observer for voice controller
         lifecycle.addObserver(voiceController)
 
-        // Set up mic button click listener
-        binding.micButton.setOnClickListener { voiceController.onMicButtonClick() }
-
-        // Set up continuous listening toggle button
-        binding.continuousListeningButton.setOnClickListener { toggleContinuousListening() }
-        updateContinuousListeningUI()
-    }
-
-    private fun toggleContinuousListening() {
-        if (voiceController.isContinuousListening()) {
-            voiceController.disableContinuousListening()
-        } else {
-            voiceController.enableContinuousListening()
+        // Set up mic button press-and-hold listener for WhatsApp-style voice input
+        binding.micButton.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    // Start listening on press
+                    diagnosticLogger.log("DIAGNOSTIC: Mic button ACTION_DOWN - starting listening")
+                    voiceController.startVoiceInput()
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    // Stop listening and process on release
+                    diagnosticLogger.log("DIAGNOSTIC: Mic button ACTION_UP - stopping listening")
+                    voiceController.stopVoiceInput()
+                    true
+                }
+                MotionEvent.ACTION_CANCEL -> {
+                    // Cancel on drag outside or interruption
+                    diagnosticLogger.log("DIAGNOSTIC: Mic button ACTION_CANCEL - cancelling")
+                    voiceController.cancelVoiceInput()
+                    true
+                }
+                else -> false
+            }
         }
-        updateContinuousListeningUI()
-    }
 
-    private fun updateContinuousListeningUI() {
-        val isEnabled = voiceController.isContinuousListening()
-        binding.continuousListeningText.text = if (isEnabled) {
-            getString(R.string.continuous_listening_on)
-        } else {
-            getString(R.string.continuous_listening_off)
-        }
-        // Change button icon/color to indicate state
-        binding.continuousListeningButton.setColorFilter(
-            androidx.core.content.ContextCompat.getColor(
-                this, if (isEnabled) R.color.listening_red else R.color.primary
-            )
-        )
-        // Show toast
-        val msg = if (isEnabled) getString(R.string.continuous_listening_enabled) else getString(R.string.continuous_listening_disabled)
-        android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_SHORT).show()
+        // Initial status
+        binding.statusText.text = getString(R.string.hold_to_speak)
     }
 
     private fun handleVoiceIntent(intent: IntentParser.Intent) {
