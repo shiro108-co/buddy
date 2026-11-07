@@ -27,4 +27,11 @@
     <string name="no_speech_detected">No speech detected. Try again.</string>
     <string name="speech_timed_out">Speech timed out. Try again.</string>
     <string name="mic_permission_required">Microphone permission required</string>
+
+    <!-- Continuous Listening strings -->
+    <string name="continuous_listening_on">Continuous listening ON</string>
+    <string name="continuous_listening_off">Continuous listening OFF</string>
+    <string name="continuous_listening_desc">Enable continuous listening mode</string>
+    <string name="continuous_listening_enabled">Continuous listening enabled</string>
+    <string name="continuous_listening_disabled">Continuous listening disabled</string>
 </resources>

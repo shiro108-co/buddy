@@ -11,8 +11,8 @@ android {
         applicationId = "com.buddyv2.app"
         minSdk = 24
         targetSdk = 34
-        versionCode = 11
-        versionName = "1.6"
+        versionCode = 12
+        versionName = "1.7"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

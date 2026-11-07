@@ -121,6 +121,37 @@ class MainActivity : AppCompatActivity() {
 
         // Set up mic button click listener
         binding.micButton.setOnClickListener { voiceController.onMicButtonClick() }
+
+        // Set up continuous listening toggle button
+        binding.continuousListeningButton.setOnClickListener { toggleContinuousListening() }
+        updateContinuousListeningUI()
+    }
+
+    private fun toggleContinuousListening() {
+        if (voiceController.isContinuousListening()) {
+            voiceController.disableContinuousListening()
+        } else {
+            voiceController.enableContinuousListening()
+        }
+        updateContinuousListeningUI()
+    }
+
+    private fun updateContinuousListeningUI() {
+        val isEnabled = voiceController.isContinuousListening()
+        binding.continuousListeningText.text = if (isEnabled) {
+            getString(R.string.continuous_listening_on)
+        } else {
+            getString(R.string.continuous_listening_off)
+        }
+        // Change button icon/color to indicate state
+        binding.continuousListeningButton.setColorFilter(
+            androidx.core.content.ContextCompat.getColor(
+                this, if (isEnabled) R.color.listening_red else R.color.primary
+            )
+        )
+        // Show toast
+        val msg = if (isEnabled) getString(R.string.continuous_listening_enabled) else getString(R.string.continuous_listening_disabled)
+        android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_SHORT).show()
     }
 
     private fun handleVoiceIntent(intent: IntentParser.Intent) {

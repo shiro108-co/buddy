@@ -11,6 +11,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
  * Manages Android's TextToSpeech with queue management to prevent overlapping speech.
+ * Supports callbacks for actual TTS speech start/end for barge-in coordination.
  */
 class TextToSpeechManager(private val context: Context) {
 
@@ -21,7 +22,9 @@ class TextToSpeechManager(private val context: Context) {
     private var currentUtteranceId = 0
 
     private var onInitListener: ((Boolean) -> Unit)? = null
-    private var onSpeakCompleteListener: (() -> Unit)? = null
+    // Callbacks for actual TTS speech lifecycle (for barge-in coordination)
+    private var onTtsSpeechStartListener: (() -> Unit)? = null
+    private var onTtsSpeechEndListener: (() -> Unit)? = null
 
     companion object {
         private const val TAG = "TextToSpeechManager"
@@ -64,6 +67,12 @@ class TextToSpeechManager(private val context: Context) {
                 onInitListener?.invoke(false)
             }
         }
+    }
+
+    /** Set callbacks for actual TTS speech start/end (used for barge-in coordination) */
+    fun setTtsSpeechCallbacks(onStart: (() -> Unit)?, onEnd: (() -> Unit)?) {
+        onTtsSpeechStartListener = onStart
+        onTtsSpeechEndListener = onEnd
     }
 
     fun speak(text: String, callback: SpeakCallback? = null) {
@@ -130,17 +139,23 @@ class TextToSpeechManager(private val context: Context) {
     private val utteranceProgressListener = object : UtteranceProgressListener() {
         override fun onStart(utteranceId: String) {
             Log.d(TAG, "Utterance started: $utteranceId")
+            // Notify actual speech start for barge-in coordination
+            onTtsSpeechStartListener?.invoke()
         }
 
         override fun onDone(utteranceId: String) {
             Log.d(TAG, "Utterance done: $utteranceId")
             isSpeaking = false
+            // Notify actual speech end for barge-in coordination
+            onTtsSpeechEndListener?.invoke()
             processQueue()
         }
 
         override fun onError(utteranceId: String) {
             Log.e(TAG, "Utterance error: $utteranceId")
             isSpeaking = false
+            // Notify actual speech end on error too
+            onTtsSpeechEndListener?.invoke()
             processQueue()
         }
     }

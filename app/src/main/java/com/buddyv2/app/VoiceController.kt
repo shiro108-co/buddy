@@ -14,7 +14,8 @@ import androidx.lifecycle.OnLifecycleEvent
 
 /**
  * Main orchestrator for voice interaction.
- * Coordinates SpeechRecognizer, TTS, IntentParser, and UI.
+ * Coordinates SpeechRecognizer, TTS, VAD, IntentParser, and UI.
+ * Supports continuous listening mode with true voice interruption (barge-in).
  * Includes comprehensive diagnostic logging for troubleshooting.
  */
 class VoiceController(
@@ -30,19 +31,32 @@ class VoiceController(
 
     private val speechRecognizerManager: SpeechRecognizerManager
     private val textToSpeechManager: TextToSpeechManager
+    private val voiceActivityDetector: VoiceActivityDetector
 
     private var isMicPermissionGranted = false
     private var pendingIntent: IntentParser.Intent? = null
     private var voiceActionPending = false
 
+    // Continuous listening mode state
+    private var isContinuousListeningEnabled = false
+    private var isProcessingInterruption = false
+    private var wasContinuousBeforeInterruption = false
+
+    // TTS state tracking for barge-in coordination
+    private var isTtsActuallySpeaking = false
+    private var ttsSpeechStartedTime = 0L
+
     companion object {
         private const val TAG = "VoiceController"
         private const val MIC_PERMISSION_REQUEST_CODE = 200
+        // Minimum time TTS must be speaking before barge-in is allowed (avoid false triggers)
+        private const val MIN_TTS_DURATION_BEFORE_BARGE_IN_MS = 500
     }
 
     init {
         speechRecognizerManager = SpeechRecognizerManager(activity, this, diagnosticLogger)
         textToSpeechManager = TextToSpeechManager(activity)
+        voiceActivityDetector = VoiceActivityDetector(diagnosticLogger)
     }
 
     @OnLifecycleEvent(Lifecycle.Event.ON_CREATE)
@@ -50,6 +64,13 @@ class VoiceController(
         diagnosticLogger.log("DIAGNOSTIC: VoiceController.onCreate() called")
         Log.d(TAG, "DIAGNOSTIC: VoiceController.onCreate() called")
         checkMicPermission()
+
+        // Set up TTS speech callbacks for barge-in coordination
+        textToSpeechManager.setTtsSpeechCallbacks(
+            onStart = { onTtsSpeechActuallyStarted() },
+            onEnd = { onTtsSpeechActuallyEnded() }
+        )
+
         textToSpeechManager.initialize { success ->
             diagnosticLogger.log("DIAGNOSTIC: TTS initialization result = $success")
             Log.d(TAG, "DIAGNOSTIC: TTS initialization result = $success")
@@ -59,12 +80,24 @@ class VoiceController(
             }
         }
         speechRecognizerManager.initialize()
+
+        // Set up VAD callback for barge-in detection
+        voiceActivityDetector.setCallback(object : VoiceActivityDetector.VoiceDetectionCallback {
+            override fun onVoiceDetected() {
+                onVadVoiceDetected()
+            }
+
+            override fun onVoiceEnded() {
+                onVadVoiceEnded()
+            }
+        })
     }
 
     @OnLifecycleEvent(Lifecycle.Event.ON_DESTROY)
     fun onDestroy() {
         diagnosticLogger.log("DIAGNOSTIC: VoiceController.onDestroy() called")
         Log.d(TAG, "DIAGNOSTIC: VoiceController.onDestroy() called")
+        voiceActivityDetector.stop()
         speechRecognizerManager.destroy()
         textToSpeechManager.shutdown()
     }
@@ -112,13 +145,43 @@ class VoiceController(
                 diagnosticLogger.log("DIAGNOSTIC: Ignoring click while PROCESSING")
                 Log.d(TAG, "DIAGNOSTIC: Ignoring click while PROCESSING")
             }
-            VoiceUIController.VoiceState.SPEAKING -> stopSpeaking()
+            VoiceUIController.VoiceState.SPEAKING -> {
+                // Barge-in via button: stop TTS and immediately start listening
+                diagnosticLogger.log("DIAGNOSTIC: Barge-in via button during SPEAKING")
+                Log.d(TAG, "DIAGNOSTIC: Barge-in via button during SPEAKING")
+                handleBargeIn()
+            }
         }
     }
 
-    private fun startListening() {
-        diagnosticLogger.log("DIAGNOSTIC: startListening() called")
-        Log.d(TAG, "DIAGNOSTIC: startListening() called")
+    /** Enable continuous listening mode - after each response, automatically restart listening */
+    fun enableContinuousListening() {
+        diagnosticLogger.log("DIAGNOSTIC: enableContinuousListening() called")
+        Log.d(TAG, "DIAGNOSTIC: enableContinuousListening() called")
+        isContinuousListeningEnabled = true
+        // If currently idle, start listening
+        if (uiController.getState() == VoiceUIController.VoiceState.IDLE) {
+            startListening()
+        }
+    }
+
+    /** Disable continuous listening mode */
+    fun disableContinuousListening() {
+        diagnosticLogger.log("DIAGNOSTIC: disableContinuousListening() called")
+        Log.d(TAG, "DIAGNOSTIC: disableContinuousListening() called")
+        isContinuousListeningEnabled = false
+        // If currently listening, stop
+        if (uiController.getState() == VoiceUIController.VoiceState.LISTENING) {
+            stopListening()
+        }
+    }
+
+    /** Check if continuous listening mode is enabled */
+    fun isContinuousListening(): Boolean = isContinuousListeningEnabled
+
+    private fun startListening(isBargeIn: Boolean = false) {
+        diagnosticLogger.log("DIAGNOSTIC: startListening() called, isBargeIn=$isBargeIn")
+        Log.d(TAG, "DIAGNOSTIC: startListening() called, isBargeIn=$isBargeIn")
         if (!isMicPermissionGranted) {
             diagnosticLogger.log("DIAGNOSTIC: startListening() - no mic permission, requesting")
             Log.w(TAG, "DIAGNOSTIC: startListening() - no mic permission, requesting")
@@ -133,13 +196,19 @@ class VoiceController(
             return
         }
 
-        // Stop any ongoing TTS
-        textToSpeechManager.stop()
+        // Stop any ongoing TTS (if not already stopped for barge-in)
+        if (textToSpeechManager.isTtsSpeaking && !isBargeIn) {
+            diagnosticLogger.log("DIAGNOSTIC: startListening() - stopping TTS before listening")
+            textToSpeechManager.stop()
+        }
+
+        // Stop VAD if running (we're about to start proper recognition)
+        voiceActivityDetector.stop()
 
         diagnosticLogger.log("DIAGNOSTIC: startListening() - setting UI state to LISTENING")
         Log.d(TAG, "DIAGNOSTIC: startListening() - setting UI state to LISTENING")
         uiController.setState(VoiceUIController.VoiceState.LISTENING)
-        speechRecognizerManager.startListening()
+        speechRecognizerManager.startListening(isBargeIn)
     }
 
     private fun stopListening() {
@@ -153,7 +222,100 @@ class VoiceController(
         diagnosticLogger.log("DIAGNOSTIC: stopSpeaking() called")
         Log.d(TAG, "DIAGNOSTIC: stopSpeaking() called")
         textToSpeechManager.stop()
+        voiceActivityDetector.stop()
         uiController.setState(VoiceUIController.VoiceState.IDLE)
+    }
+
+    /** Handle barge-in: stop TTS, stop VAD, start listening for new command */
+    private fun handleBargeIn() {
+        diagnosticLogger.log("DIAGNOSTIC: handleBargeIn() called")
+        Log.d(TAG, "DIAGNOSTIC: handleBargeIn() called")
+
+        // Prevent duplicate barge-in handling
+        if (isProcessingInterruption) {
+            diagnosticLogger.log("DIAGNOSTIC: handleBargeIn() - already processing interruption, ignoring")
+            return
+        }
+
+        isProcessingInterruption = true
+        wasContinuousBeforeInterruption = isContinuousListeningEnabled
+
+        // Stop TTS immediately
+        textToSpeechManager.stop()
+
+        // Stop VAD
+        voiceActivityDetector.stop()
+
+        // Small delay to ensure audio system settles, then start listening
+        // Use a short delay to avoid race conditions
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            startListening(isBargeIn = true)
+            isProcessingInterruption = false
+        }, 100)
+    }
+
+    /** Called when VAD detects voice during TTS */
+    private fun onVadVoiceDetected() {
+        diagnosticLogger.log("DIAGNOSTIC: onVadVoiceDetected() called, isTtsActuallySpeaking=$isTtsActuallySpeaking")
+        Log.d(TAG, "DIAGNOSTIC: onVadVoiceDetected() called, isTtsActuallySpeaking=$isTtsActuallySpeaking")
+
+        // Only trigger barge-in if TTS is actually speaking and has been for a minimum duration
+        if (isTtsActuallySpeaking) {
+            val ttsDuration = System.currentTimeMillis() - ttsSpeechStartedTime
+            if (ttsDuration >= MIN_TTS_DURATION_BEFORE_BARGE_IN_MS) {
+                diagnosticLogger.log("DIAGNOSTIC: Barge-in triggered by VAD (TTS duration=${ttsDuration}ms)")
+                Log.d(TAG, "Barge-in triggered by VAD after ${ttsDuration}ms of TTS")
+                handleBargeIn()
+            } else {
+                diagnosticLogger.log("DIAGNOSTIC: VAD detected voice but TTS too short (${ttsDuration}ms), ignoring")
+            }
+        }
+    }
+
+    /** Called when VAD voice segment ends */
+    private fun onVadVoiceEnded() {
+        diagnosticLogger.log("DIAGNOSTIC: onVadVoiceEnded() called")
+        Log.d(TAG, "DIAGNOSTIC: onVadVoiceEnded() called")
+        // VAD voice segment ended - if we didn't trigger barge-in, continue monitoring
+        // The barge-in would have been triggered in onVadVoiceDetected
+    }
+
+    /** Called when TTS actually starts speaking (from UtteranceProgressListener.onStart) */
+    private fun onTtsSpeechActuallyStarted() {
+        diagnosticLogger.log("DIAGNOSTIC: onTtsSpeechActuallyStarted() called")
+        Log.d(TAG, "DIAGNOSTIC: onTtsSpeechActuallyStarted() called")
+        isTtsActuallySpeaking = true
+        ttsSpeechStartedTime = System.currentTimeMillis()
+
+        // Start VAD to monitor for user speech during TTS (for barge-in)
+        // Only if continuous listening is enabled
+        if (isContinuousListeningEnabled) {
+            diagnosticLogger.log("DIAGNOSTIC: Starting VAD for barge-in detection during TTS")
+            voiceActivityDetector.start()
+        }
+    }
+
+    /** Called when TTS actually ends speaking (from UtteranceProgressListener.onDone/onError) */
+    private fun onTtsSpeechActuallyEnded() {
+        diagnosticLogger.log("DIAGNOSTIC: onTtsSpeechActuallyEnded() called, isContinuousListening=$isContinuousListeningEnabled")
+        Log.d(TAG, "DIAGNOSTIC: onTtsSpeechActuallyEnded() called, isContinuousListening=$isContinuousListeningEnabled")
+        isTtsActuallySpeaking = false
+
+        // Stop VAD
+        voiceActivityDetector.stop()
+
+        // If continuous listening is enabled and we're not processing an interruption,
+        // automatically restart listening
+        if (isContinuousListeningEnabled && !isProcessingInterruption) {
+            diagnosticLogger.log("DIAGNOSTIC: TTS ended, restarting listening for continuous mode")
+            // Small delay to ensure clean transition
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                startListening()
+            }, 200)
+        } else if (!isContinuousListeningEnabled) {
+            diagnosticLogger.log("DIAGNOSTIC: TTS ended, returning to IDLE (continuous mode off)")
+            uiController.setState(VoiceUIController.VoiceState.IDLE)
+        }
     }
 
     /** Called by MainActivity when a voice-triggered action completes with a result message. */
@@ -186,10 +348,18 @@ class VoiceController(
         // Already handled by UI state change
     }
 
+    override fun onRecognitionStarted() {
+        diagnosticLogger.log("DIAGNOSTIC: onRecognitionStarted() called - recognition actually started")
+        Log.d(TAG, "DIAGNOSTIC: onRecognitionStarted() called - recognition actually started")
+        // Recognition has actually started - if this was a barge-in, VAD is already stopped
+        // If VAD is still running for some reason, stop it now
+        voiceActivityDetector.stop()
+    }
+
     override fun onBeginningOfSpeech() {
         diagnosticLogger.log("DIAGNOSTIC: onBeginningOfSpeech() called - USER STARTED SPEAKING")
         Log.d(TAG, "DIAGNOSTIC: onBeginningOfSpeech() called - USER STARTED SPEAKING")
-        // User started speaking
+        // User started speaking during recognition
     }
 
     override fun onPartialResults(partialText: String) {
@@ -233,6 +403,17 @@ class VoiceController(
         }
         diagnosticLogger.log("DIAGNOSTIC: onError() errorCode=$errorCode ($errorString), message='$errorMessage'")
         Log.w(TAG, "DIAGNOSTIC: onError() errorCode=$errorCode ($errorString), message='$errorMessage'")
+
+        // Stop VAD on any recognition error
+        voiceActivityDetector.stop()
+
+        // Handle barge-in specific errors
+        if (errorCode == SpeechRecognizer.ERROR_RECOGNIZER_BUSY && isProcessingInterruption) {
+            diagnosticLogger.log("DIAGNOSTIC: Recognizer busy during barge-in, will retry")
+            // Could retry here, but for now just reset and let continuous mode handle it
+            isProcessingInterruption = false
+        }
+
         uiController.setState(VoiceUIController.VoiceState.IDLE)
         voiceActionPending = false
         when (errorCode) {
@@ -243,6 +424,14 @@ class VoiceController(
                 onError("Microphone permission denied")
             }
             else -> onError(errorMessage)
+        }
+
+        // If continuous listening and error wasn't during interruption, restart listening
+        if (isContinuousListeningEnabled && !isProcessingInterruption) {
+            diagnosticLogger.log("DIAGNOSTIC: Error in continuous mode, restarting listening")
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                startListening()
+            }, 500)
         }
     }
 
@@ -264,15 +453,15 @@ class VoiceController(
             }
 
             override fun onDone() {
-                diagnosticLogger.log("DIAGNOSTIC: TTS onDone() - returning to IDLE")
-                Log.d(TAG, "DIAGNOSTIC: TTS onDone() - returning to IDLE")
-                uiController.setState(VoiceUIController.VoiceState.IDLE)
+                diagnosticLogger.log("DIAGNOSTIC: TTS onDone()")
+                Log.d(TAG, "DIAGNOSTIC: TTS onDone()")
+                // Actual speech end is handled by onTtsSpeechActuallyEnded()
             }
 
             override fun onError(errorMessage: String) {
                 diagnosticLogger.log("DIAGNOSTIC: TTS onError() = $errorMessage")
                 Log.e(TAG, "DIAGNOSTIC: TTS onError() = $errorMessage")
-                uiController.setState(VoiceUIController.VoiceState.IDLE)
+                // Actual speech end on error is handled by onTtsSpeechActuallyEnded()
             }
         })
     }
@@ -292,9 +481,12 @@ class VoiceController(
     fun cancelAll() {
         diagnosticLogger.log("DIAGNOSTIC: cancelAll() called")
         Log.d(TAG, "DIAGNOSTIC: cancelAll() called")
+        voiceActivityDetector.stop()
         speechRecognizerManager.cancel()
         textToSpeechManager.stop()
         voiceActionPending = false
+        isProcessingInterruption = false
+        isTtsActuallySpeaking = false
         uiController.setState(VoiceUIController.VoiceState.IDLE)
     }
 }
