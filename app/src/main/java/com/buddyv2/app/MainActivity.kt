@@ -70,11 +70,16 @@ class MainActivity : AppCompatActivity() {
     private lateinit var intentParser: IntentParser
     private lateinit var voiceUIController: VoiceUIController
     private lateinit var voiceController: VoiceController
+    private lateinit var diagnosticLogger: DiagnosticLogger
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        // Initialize diagnostic logger first
+        diagnosticLogger = DiagnosticLogger(this)
+        diagnosticLogger.log("=== Buddy V2 Diagnostic Session Started ===")
 
         // Setup WindowInsets handling for keyboard (IME) positioning
         setupWindowInsets()
@@ -88,6 +93,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initializeVoice() {
+        diagnosticLogger.log("DIAGNOSTIC: initializeVoice() called")
         Log.d(TAG, "DIAGNOSTIC: initializeVoice() called")
         conversationContext = ConversationContext()
         intentParser = IntentParser(conversationContext)
@@ -106,7 +112,8 @@ class MainActivity : AppCompatActivity() {
             onIntentParsed = { intent -> handleVoiceIntent(intent) },
             onTextRecognized = { text -> /* partial results shown in UI */ },
             onResultReady = { message -> onVoiceResult(message) },
-            onError = { error -> onVoiceError(error) }
+            onError = { error -> onVoiceError(error) },
+            diagnosticLogger = diagnosticLogger
         )
 
         // Register lifecycle observer for voice controller
@@ -117,22 +124,26 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleVoiceIntent(intent: IntentParser.Intent) {
+        diagnosticLogger.log("DIAGNOSTIC: handleVoiceIntent() called with intent = $intent")
         Log.d(TAG, "DIAGNOSTIC: handleVoiceIntent() called with intent = $intent")
         // Mark that a voice action is pending so result will be reported to voice controller
         voiceController.markVoiceActionPending()
 
         when (intent) {
             is IntentParser.Intent.OpenApp -> {
+                diagnosticLogger.log("DIAGNOSTIC: handleVoiceIntent() - OpenApp: ${intent.appName}")
                 Log.d(TAG, "DIAGNOSTIC: handleVoiceIntent() - OpenApp: ${intent.appName}")
                 conversationContext.setLastAction("open")
                 extractAppName(intent.appName)?.let { openApp(it) }
             }
             is IntentParser.Intent.CallContact -> {
+                diagnosticLogger.log("DIAGNOSTIC: handleVoiceIntent() - CallContact: ${intent.contactName}")
                 Log.d(TAG, "DIAGNOSTIC: handleVoiceIntent() - CallContact: ${intent.contactName}")
                 conversationContext.setLastAction("call")
                 extractContactName(intent.contactName)?.let { resolveAndCall(it) }
             }
             is IntentParser.Intent.WhatsAppMessage -> {
+                diagnosticLogger.log("DIAGNOSTIC: handleVoiceIntent() - WhatsAppMessage: contact='${intent.contactName}'")
                 Log.d(TAG, "DIAGNOSTIC: handleVoiceIntent() - WhatsAppMessage: contact='${intent.contactName}'")
                 conversationContext.setLastAction("whatsapp")
                 // Use contact-aware parsing for the full remaining text
@@ -141,23 +152,28 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             is IntentParser.Intent.SearchWeb -> {
+                diagnosticLogger.log("DIAGNOSTIC: handleVoiceIntent() - SearchWeb: ${intent.query}")
                 Log.d(TAG, "DIAGNOSTIC: handleVoiceIntent() - SearchWeb: ${intent.query}")
                 conversationContext.setLastAction("search")
                 extractSearchQuery(intent.query)?.let { searchWeb(it) }
             }
             is IntentParser.Intent.Help -> {
+                diagnosticLogger.log("DIAGNOSTIC: handleVoiceIntent() - Help: ${intent.topic}")
                 Log.d(TAG, "DIAGNOSTIC: handleVoiceIntent() - Help: ${intent.topic}")
                 showHelp(intent.topic ?: "")
             }
             IntentParser.Intent.StopSpeaking -> {
+                diagnosticLogger.log("DIAGNOSTIC: handleVoiceIntent() - StopSpeaking")
                 Log.d(TAG, "DIAGNOSTIC: handleVoiceIntent() - StopSpeaking")
                 voiceController.stopSpeaking()
             }
             IntentParser.Intent.RepeatLast -> {
+                diagnosticLogger.log("DIAGNOSTIC: handleVoiceIntent() - RepeatLast")
                 Log.d(TAG, "DIAGNOSTIC: handleVoiceIntent() - RepeatLast")
                 onVoiceError("Repeat not yet implemented")
             }
             is IntentParser.Intent.Unknown -> {
+                diagnosticLogger.log("DIAGNOSTIC: handleVoiceIntent() - Unknown, treating as search: ${intent.originalText}")
                 Log.d(TAG, "DIAGNOSTIC: handleVoiceIntent() - Unknown, treating as search: ${intent.originalText}")
                 // Treat unknown as search query
                 extractSearchQuery(intent.originalText)?.let { searchWeb(it) }
@@ -166,6 +182,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun onVoiceResult(message: String) {
+        diagnosticLogger.log("DIAGNOSTIC: onVoiceResult() called with message = '$message'")
         Log.d(TAG, "DIAGNOSTIC: onVoiceResult() called with message = '$message'")
         // Add to conversation context
         // Note: We need the original recognized text for context
@@ -175,6 +192,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun onVoiceError(error: String) {
+        diagnosticLogger.log("DIAGNOSTIC: onVoiceError() called with error = '$error'")
         Log.d(TAG, "DIAGNOSTIC: onVoiceError() called with error = '$error'")
         showError(error)
         // Return to idle state after error
@@ -382,6 +400,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupClickListeners() {
         binding.sendButton.setOnClickListener { submitCommand() }
+
+        // Long-press on status text to export diagnostic logs
+        binding.statusText.setOnLongClickListener {
+            exportDiagnosticLogs()
+            true
+        }
     }
 
     private fun checkPermissions() {
@@ -444,6 +468,10 @@ class MainActivity : AppCompatActivity() {
             "whatsapp" -> extractContactAndMessage(args)?.let { (contact, message) -> resolveAndSendWhatsApp(contact, message) }
             "search" -> extractSearchQuery(args)?.let { searchWeb(it) }
             "help" -> showHelp(args)
+            "diagnostics" -> {
+                diagnosticLogger.log("DIAGNOSTIC: /diagnostics command executed")
+                exportDiagnosticLogs()
+            }
             else -> {
                 val helpText = CommandRegistry.getHelp(trigger)
                 showResult(helpText)
@@ -464,7 +492,7 @@ class MainActivity : AppCompatActivity() {
                 extractSearchQuery(lowerCommand)?.let { searchWeb(it) }
             }
             else -> {
-                val msg = "Command not recognized. Try: /open app name, /call contact name, /whatsapp contact message, /search query, or /help"
+                val msg = "Command not recognized. Try: /open app name, /call contact name, /whatsapp contact message, /search query, /diagnostics, or /help"
                 showResult(msg)
             }
         }
@@ -481,6 +509,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showResult(message: String) {
+        diagnosticLogger.log("DIAGNOSTIC: showResult() called with message = '$message'")
         Log.d(TAG, "DIAGNOSTIC: showResult() called with message = '$message'")
         // Display result centered in commandText (replaces temporary status)
         binding.commandText.text = message
@@ -491,6 +520,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showError(message: String) {
+        diagnosticLogger.log("DIAGNOSTIC: showError() called with message = '$message'")
         Log.d(TAG, "DIAGNOSTIC: showError() called with message = '$message'")
         // Display error centered in commandText
         binding.commandText.text = message
@@ -499,6 +529,34 @@ class MainActivity : AppCompatActivity() {
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
         // Report to voice controller if a voice action is pending
         voiceController.reportVoiceResult(message)
+    }
+
+    private fun exportDiagnosticLogs() {
+        diagnosticLogger.log("DIAGNOSTIC: Export diagnostic logs requested")
+        Log.d(TAG, "DIAGNOSTIC: Export diagnostic logs requested")
+
+        val logFile = diagnosticLogger.getLogFile()
+        val uri = androidx.core.content.FileProvider.getUriForFile(
+            this,
+            "${packageName}.fileprovider",
+            logFile
+        )
+
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            putExtra(Intent.EXTRA_SUBJECT, "Buddy V2 Voice Diagnostic Log")
+            putExtra(Intent.EXTRA_TEXT, "Voice diagnostic log from Buddy V2 app")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+
+        try {
+            startActivity(Intent.createChooser(shareIntent, "Export Diagnostic Logs"))
+            diagnosticLogger.log("DIAGNOSTIC: Share intent started for diagnostic log export")
+        } catch (e: ActivityNotFoundException) {
+            diagnosticLogger.log("DIAGNOSTIC: No app available to share log file")
+            Toast.makeText(this, "No app available to share log file", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun extractAppName(command: String): String? {
@@ -764,6 +822,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun openApp(appName: String) {
+        diagnosticLogger.log("DIAGNOSTIC: openApp() called with appName = '$appName'")
         Log.d(TAG, "DIAGNOSTIC: openApp() called with appName = '$appName'")
         val packageManager = packageManager
         val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
@@ -786,6 +845,7 @@ class MainActivity : AppCompatActivity() {
     // ===== CONTACT RESOLUTION =====
 
     private fun resolveAndCall(contactName: String) {
+        diagnosticLogger.log("DIAGNOSTIC: resolveAndCall() called with contactName = '$contactName'")
         Log.d(TAG, "DIAGNOSTIC: resolveAndCall() called with contactName = '$contactName'")
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
             pendingCallNumber = null
@@ -807,6 +867,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun resolveAndSendWhatsApp(contactName: String, message: String) {
+        diagnosticLogger.log("DIAGNOSTIC: resolveAndSendWhatsApp() called with contactName = '$contactName', message = '$message'")
         Log.d(TAG, "DIAGNOSTIC: resolveAndSendWhatsApp() called with contactName = '$contactName', message = '$message'")
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
             pendingWhatsAppContact = contactName
@@ -916,6 +977,7 @@ class MainActivity : AppCompatActivity() {
     // ===== ACTION EXECUTION =====
 
     private fun makeCall(phoneNumber: String) {
+        diagnosticLogger.log("DIAGNOSTIC: makeCall() called with phoneNumber = '$phoneNumber'")
         Log.d(TAG, "DIAGNOSTIC: makeCall() called with phoneNumber = '$phoneNumber'")
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED) {
             val intent = Intent(Intent.ACTION_CALL, Uri.parse("tel:$phoneNumber"))
@@ -932,6 +994,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun sendWhatsApp(phoneNumber: String, message: String) {
+        diagnosticLogger.log("DIAGNOSTIC: sendWhatsApp() called with phoneNumber = '$phoneNumber', message = '$message'")
         Log.d(TAG, "DIAGNOSTIC: sendWhatsApp() called with phoneNumber = '$phoneNumber', message = '$message'")
         val packageManager = packageManager
         val whatsappPackage = if (packageManager.getLaunchIntentForPackage("com.whatsapp") != null) {
@@ -961,6 +1024,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun searchWeb(query: String) {
+        diagnosticLogger.log("DIAGNOSTIC: searchWeb() called with query = '$query'")
         Log.d(TAG, "DIAGNOSTIC: searchWeb() called with query = '$query'")
         val encodedQuery = Uri.encode(query)
         val url = "https://www.google.com/search?q=$encodedQuery"
@@ -1010,6 +1074,8 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         autocompletePopup?.dismiss()
         voiceUIController.cleanup()
+        diagnosticLogger.log("=== Buddy V2 Diagnostic Session Ended ===")
+        diagnosticLogger.shutdown()
         super.onDestroy()
     }
 
