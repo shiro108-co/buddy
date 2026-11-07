@@ -2,7 +2,12 @@ R_DEF: Internal format may change without notice
 local
 color accent
 color background
+color category_apps
+color category_communication
+color category_search
+color category_system
 color error
+color listening_red
 color on_background
 color on_error
 color on_primary
@@ -13,9 +18,11 @@ color primary
 color primary_alpha_10
 color primary_text
 color primary_variant
+color processing_blue
 color secondary
 color secondary_text
 color secondary_variant
+color speaking_green
 color surface
 color surface_variant
 color tertiary
@@ -33,6 +40,7 @@ id commandInput
 id commandText
 id helpText
 id inputContainer
+id micButton
 id sendButton
 id statusText
 id titleText
@@ -45,11 +53,24 @@ string contact_has_no_number
 string contact_not_found
 string enter_command
 string error_occurred
+string listening_indicator
+string mic_permission_required
 string multiple_contacts_found
+string no_speech_detected
 string permission_contacts_denied
 string permission_contacts_rationale
+string processing_indicator
 string send_button_desc
+string speaking_hint
+string speaking_indicator
+string speech_timed_out
+string tap_mic_to_speak
 string type_command_hint
+string type_or_speak_command
+string voice_processing
+string voice_start_listening
+string voice_stop_listening
+string voice_stop_speaking
 string whatsapp_not_installed
 style Theme.BuddyV2
 style Theme.BuddyV2.AppBarOverlay
@@ -57,3 +78,4 @@ style Theme.BuddyV2.NoActionBar
 style Theme.BuddyV2.PopupOverlay
 xml backup_rules
 xml data_extraction_rules
+xml file_provider_paths

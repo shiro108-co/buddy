@@ -84,12 +84,22 @@
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginBottom="16dp">
 
+        <ImageButton
+            android:id="@+id/micButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@android:drawable/ic_btn_speak_now"
+            android:background="@drawable/circle_bg"
+            android:contentDescription="@string/voice_start_listening"
+            android:scaleType="centerInside"
+            android:padding="12dp"/>
+
         <EditText
             android:id="@+id/commandInput"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:hint="@string/type_command_hint"
+            android:hint="@string/type_or_speak_command"
             android:textSize="16sp"
             android:textColor="@color/primary_text"
             android:textColorHint="@color/secondary_text"
@@ -97,7 +107,9 @@
             android:maxLines="1"
             android:inputType="text"
             android:imeOptions="actionSend"
-            android:windowSoftInputMode="adjustResize"/>
+            android:windowSoftInputMode="adjustResize"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"/>
 
         <ImageButton
             android:id="@+id/sendButton"

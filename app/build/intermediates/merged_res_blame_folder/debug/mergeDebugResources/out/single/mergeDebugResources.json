@@ -8,6 +8,10 @@
         "source": "com.buddyv2.app-main-39:/drawable/autocomplete_bg.xml"
     },
     {
+        "merged": "com.buddyv2.app-debug-37:/xml_file_provider_paths.xml.flat",
+        "source": "com.buddyv2.app-main-39:/xml/file_provider_paths.xml"
+    },
+    {
         "merged": "com.buddyv2.app-debug-37:/layout_item_command_suggestion.xml.flat",
         "source": "com.buddyv2.app-main-39:/layout/item_command_suggestion.xml"
     },

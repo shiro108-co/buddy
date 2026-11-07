@@ -36,6 +36,8 @@ class SpeechRecognizerManager(
     private var speechRecognizer: SpeechRecognizer? = null
     private var isListening = false
     private var hasStartedSpeaking = false
+    // Session-specific storage for latest valid partial transcript
+    private var latestPartialTranscript: String? = null
 
     companion object {
         private const val TAG = "SpeechRecognizerManager"
@@ -80,6 +82,10 @@ class SpeechRecognizerManager(
             Log.w(TAG, "Already listening")
             return
         }
+
+        // Clear stored partial transcript for new session
+        latestPartialTranscript = null
+        diagnosticLogger.log("DIAGNOSTIC: startListening() - cleared latestPartialTranscript for new session")
 
         val recognizer = speechRecognizer ?: return
 
@@ -156,6 +162,8 @@ class SpeechRecognizerManager(
         Log.d(TAG, "DIAGNOSTIC: cancel() called - recognizer.cancel()")
         speechRecognizer?.cancel()
         isListening = false
+        latestPartialTranscript = null
+        diagnosticLogger.log("DIAGNOSTIC: cancel() cleared latestPartialTranscript")
         diagnosticLogger.log("Cancelled recognition")
         Log.d(TAG, "Cancelled recognition")
     }
@@ -217,6 +225,23 @@ class SpeechRecognizerManager(
             diagnosticLogger.log("DIAGNOSTIC: onError() errorCode=$errorCode ($errorString)")
             Log.w(TAG, "DIAGNOSTIC: onError() errorCode=$errorCode ($errorString)")
             isListening = false
+
+            // For ERROR_NO_MATCH, check if we have a valid stored partial transcript
+            if (errorCode == SpeechRecognizer.ERROR_NO_MATCH) {
+                latestPartialTranscript?.let { text ->
+                    if (text.isNotBlank()) {
+                        diagnosticLogger.log("DIAGNOSTIC: onError(ERROR_NO_MATCH) - using stored partial transcript = '$text'")
+                        Log.d(TAG, "DIAGNOSTIC: onError(ERROR_NO_MATCH) - using stored partial transcript = '$text'")
+                        listener.onResults(text)
+                        latestPartialTranscript = null
+                        diagnosticLogger.log("DIAGNOSTIC: onError(ERROR_NO_MATCH) cleared latestPartialTranscript after fallback")
+                        return
+                    }
+                }
+                diagnosticLogger.log("DIAGNOSTIC: onError(ERROR_NO_MATCH) - no valid partial transcript stored")
+                Log.w(TAG, "DIAGNOSTIC: onError(ERROR_NO_MATCH) - no valid partial transcript stored")
+            }
+
             val errorMessage = when (errorCode) {
                 SpeechRecognizer.ERROR_AUDIO -> "Audio recording error"
                 SpeechRecognizer.ERROR_CLIENT -> "Client error"
@@ -230,6 +255,9 @@ class SpeechRecognizerManager(
                 else -> "Unknown error ($errorCode)"
             }
             listener.onError(errorCode, errorMessage)
+
+            // Clear stored partial transcript on error (unless already handled above)
+            latestPartialTranscript = null
         }
 
         override fun onResults(results: Bundle?) {
@@ -243,21 +271,23 @@ class SpeechRecognizerManager(
             val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
             diagnosticLogger.log("DIAGNOSTIC: onResults() matches = $matches")
             Log.d(TAG, "DIAGNOSTIC: onResults() matches = $matches")
-            matches?.firstOrNull()?.let { text ->
-                if (text.isNotBlank()) {
-                    diagnosticLogger.log("DIAGNOSTIC: onResults() recognized text = '$text'")
-                    Log.d(TAG, "DIAGNOSTIC: onResults() recognized text = '$text'")
-                    listener.onResults(text)
-                } else {
-                    diagnosticLogger.log("DIAGNOSTIC: onResults() empty text, sending NO_MATCH")
-                    Log.w(TAG, "DIAGNOSTIC: onResults() empty text, sending NO_MATCH")
-                    listener.onError(SpeechRecognizer.ERROR_NO_MATCH, "Empty recognition result")
-                }
-            } ?: run {
-                diagnosticLogger.log("DIAGNOSTIC: onResults() no matches, sending NO_MATCH")
-                Log.w(TAG, "DIAGNOSTIC: onResults() no matches, sending NO_MATCH")
+
+            // Try to get final result from matches, fallback to latest partial transcript
+            val finalText = matches?.firstOrNull()?.takeIf { it.isNotBlank() } ?: latestPartialTranscript
+
+            if (finalText != null && finalText.isNotBlank()) {
+                diagnosticLogger.log("DIAGNOSTIC: onResults() recognized text = '$finalText' (from ${if (matches?.firstOrNull()?.isNotBlank() == true) "final results" else "partial fallback"})")
+                Log.d(TAG, "DIAGNOSTIC: onResults() recognized text = '$finalText'")
+                listener.onResults(finalText)
+            } else {
+                diagnosticLogger.log("DIAGNOSTIC: onResults() no matches and no partial fallback, sending NO_MATCH")
+                Log.w(TAG, "DIAGNOSTIC: onResults() no matches and no partial fallback, sending NO_MATCH")
                 listener.onError(SpeechRecognizer.ERROR_NO_MATCH, "No recognition results")
             }
+
+            // Clear stored partial transcript after processing this session
+            latestPartialTranscript = null
+            diagnosticLogger.log("DIAGNOSTIC: onResults() cleared latestPartialTranscript after session")
         }
 
         override fun onPartialResults(partialResults: Bundle?) {
@@ -274,6 +304,9 @@ class SpeechRecognizerManager(
                 if (text.isNotBlank()) {
                     diagnosticLogger.log("DIAGNOSTIC: onPartialResults() partial text = '$text'")
                     Log.d(TAG, "DIAGNOSTIC: onPartialResults() partial text = '$text'")
+                    // Store latest valid partial transcript for fallback
+                    latestPartialTranscript = text
+                    diagnosticLogger.log("DIAGNOSTIC: onPartialResults() stored latestPartialTranscript = '$text'")
                     listener.onPartialResults(text)
                 }
             }
