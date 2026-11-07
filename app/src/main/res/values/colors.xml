@@ -25,4 +25,9 @@
     <color name="category_communication">#25D366</color>
     <color name="category_search">#FF5722</color>
     <color name="category_system">#757575</color>
+
+    <!-- Voice state colors -->
+    <color name="listening_red">#E53935</color>
+    <color name="processing_blue">#1E88E5</color>
+    <color name="speaking_green">#43A047</color>
 </resources>

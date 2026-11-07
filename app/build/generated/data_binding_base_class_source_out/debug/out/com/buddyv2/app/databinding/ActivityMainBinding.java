@@ -35,6 +35,9 @@ public final class ActivityMainBinding implements ViewBinding {
   public final LinearLayout inputContainer;
 
   @NonNull
+  public final ImageButton micButton;
+
+  @NonNull
   public final ImageButton sendButton;
 
   @NonNull
@@ -45,13 +48,14 @@ public final class ActivityMainBinding implements ViewBinding {
 
   private ActivityMainBinding(@NonNull ConstraintLayout rootView, @NonNull EditText commandInput,
       @NonNull TextView commandText, @NonNull TextView helpText,
-      @NonNull LinearLayout inputContainer, @NonNull ImageButton sendButton,
-      @NonNull TextView statusText, @NonNull TextView titleText) {
+      @NonNull LinearLayout inputContainer, @NonNull ImageButton micButton,
+      @NonNull ImageButton sendButton, @NonNull TextView statusText, @NonNull TextView titleText) {
     this.rootView = rootView;
     this.commandInput = commandInput;
     this.commandText = commandText;
     this.helpText = helpText;
     this.inputContainer = inputContainer;
+    this.micButton = micButton;
     this.sendButton = sendButton;
     this.statusText = statusText;
     this.titleText = titleText;
@@ -108,6 +112,12 @@ public final class ActivityMainBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.micButton;
+      ImageButton micButton = ViewBindings.findChildViewById(rootView, id);
+      if (micButton == null) {
+        break missingId;
+      }
+
       id = R.id.sendButton;
       ImageButton sendButton = ViewBindings.findChildViewById(rootView, id);
       if (sendButton == null) {
@@ -127,7 +137,7 @@ public final class ActivityMainBinding implements ViewBinding {
       }
 
       return new ActivityMainBinding((ConstraintLayout) rootView, commandInput, commandText,
-          helpText, inputContainer, sendButton, statusText, titleText);
+          helpText, inputContainer, micButton, sendButton, statusText, titleText);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

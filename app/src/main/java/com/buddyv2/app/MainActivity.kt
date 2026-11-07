@@ -17,6 +17,7 @@ import android.text.TextWatcher
 import android.util.Log
 import android.view.KeyEvent
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
@@ -29,6 +30,9 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleObserver
+import androidx.lifecycle.OnLifecycleEvent
 import androidx.recyclerview.widget.RecyclerView
 import com.buddyv2.app.databinding.ActivityMainBinding
 import java.util.Locale
@@ -54,6 +58,7 @@ class MainActivity : AppCompatActivity() {
     private val OVERLAY_PERMISSION_REQUEST_CODE = 101
     private val CALL_PERMISSION_REQUEST_CODE = 102
     private val CONTACTS_PERMISSION_REQUEST_CODE = 103
+    private val MIC_PERMISSION_REQUEST_CODE = 200
 
     // Autocomplete popup
     private var autocompletePopup: CommandAutocompletePopup? = null
@@ -61,17 +66,162 @@ class MainActivity : AppCompatActivity() {
     private var slashStartPosition = -1
     private var slashCursorPosition = -1
 
+    // Voice components
+    private lateinit var conversationContext: ConversationContext
+    private lateinit var intentParser: IntentParser
+    private lateinit var voiceUIController: VoiceUIController
+    private lateinit var voiceController: VoiceController
+    private lateinit var diagnosticLogger: DiagnosticLogger
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // Initialize diagnostic logger first
+        diagnosticLogger = DiagnosticLogger(this)
+        diagnosticLogger.log("=== Buddy V2 Diagnostic Session Started ===")
+
         // Setup WindowInsets handling for keyboard (IME) positioning
         setupWindowInsets()
+
+        // Initialize voice components
+        initializeVoice()
 
         setupTextInput()
         setupClickListeners()
         checkPermissions()
+    }
+
+    private fun initializeVoice() {
+        diagnosticLogger.log("DIAGNOSTIC: initializeVoice() called")
+        Log.d(TAG, "DIAGNOSTIC: initializeVoice() called")
+        conversationContext = ConversationContext()
+        intentParser = IntentParser(conversationContext)
+        voiceUIController = VoiceUIController(
+            context = this,
+            micButton = binding.micButton,
+            statusText = binding.statusText,
+            commandText = binding.commandText,
+            commandInput = binding.commandInput
+        )
+
+        voiceController = VoiceController(
+            activity = this,
+            uiController = voiceUIController,
+            intentParser = intentParser,
+            onIntentParsed = { intent -> handleVoiceIntent(intent) },
+            onTextRecognized = { text -> /* partial results shown in UI */ },
+            onResultReady = { message -> onVoiceResult(message) },
+            onError = { error -> onVoiceError(error) },
+            diagnosticLogger = diagnosticLogger
+        )
+
+        // Register lifecycle observer for voice controller
+        lifecycle.addObserver(voiceController)
+
+        // Set up mic button press-and-hold listener for WhatsApp-style voice input
+        binding.micButton.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    // Start listening on press
+                    diagnosticLogger.log("DIAGNOSTIC: Mic button ACTION_DOWN - starting listening")
+                    voiceController.startVoiceInput()
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    // Stop listening and process on release
+                    diagnosticLogger.log("DIAGNOSTIC: Mic button ACTION_UP - stopping listening")
+                    voiceController.stopVoiceInput()
+                    true
+                }
+                MotionEvent.ACTION_CANCEL -> {
+                    // Cancel on drag outside or interruption
+                    diagnosticLogger.log("DIAGNOSTIC: Mic button ACTION_CANCEL - cancelling")
+                    voiceController.cancelVoiceInput()
+                    true
+                }
+                else -> false
+            }
+        }
+
+        // Initial status
+        binding.statusText.text = getString(R.string.hold_to_speak)
+    }
+
+    private fun handleVoiceIntent(intent: IntentParser.Intent) {
+        diagnosticLogger.log("DIAGNOSTIC: handleVoiceIntent() called with intent = $intent")
+        Log.d(TAG, "DIAGNOSTIC: handleVoiceIntent() called with intent = $intent")
+        // voiceActionPending is already set to true in onResults(), no need to mark again
+
+        when (intent) {
+            is IntentParser.Intent.OpenApp -> {
+                diagnosticLogger.log("DIAGNOSTIC: handleVoiceIntent() - OpenApp: ${intent.appName}")
+                Log.d(TAG, "DIAGNOSTIC: handleVoiceIntent() - OpenApp: ${intent.appName}")
+                conversationContext.setLastAction("open")
+                extractAppName(intent.appName)?.let { openApp(it) }
+            }
+            is IntentParser.Intent.CallContact -> {
+                diagnosticLogger.log("DIAGNOSTIC: handleVoiceIntent() - CallContact: ${intent.contactName}")
+                Log.d(TAG, "DIAGNOSTIC: handleVoiceIntent() - CallContact: ${intent.contactName}")
+                conversationContext.setLastAction("call")
+                extractContactName(intent.contactName)?.let { resolveAndCall(it) }
+            }
+            is IntentParser.Intent.WhatsAppMessage -> {
+                diagnosticLogger.log("DIAGNOSTIC: handleVoiceIntent() - WhatsAppMessage: contact='${intent.contactName}'")
+                Log.d(TAG, "DIAGNOSTIC: handleVoiceIntent() - WhatsAppMessage: contact='${intent.contactName}'")
+                conversationContext.setLastAction("whatsapp")
+                // Use contact-aware parsing for the full remaining text
+                extractContactAndMessage(intent.contactName)?.let { (contact, message) ->
+                    resolveAndSendWhatsApp(contact, message)
+                }
+            }
+            is IntentParser.Intent.SearchWeb -> {
+                diagnosticLogger.log("DIAGNOSTIC: handleVoiceIntent() - SearchWeb: ${intent.query}")
+                Log.d(TAG, "DIAGNOSTIC: handleVoiceIntent() - SearchWeb: ${intent.query}")
+                conversationContext.setLastAction("search")
+                extractSearchQuery(intent.query)?.let { searchWeb(it) }
+            }
+            is IntentParser.Intent.Help -> {
+                diagnosticLogger.log("DIAGNOSTIC: handleVoiceIntent() - Help: ${intent.topic}")
+                Log.d(TAG, "DIAGNOSTIC: handleVoiceIntent() - Help: ${intent.topic}")
+                showHelp(intent.topic ?: "")
+            }
+            IntentParser.Intent.StopSpeaking -> {
+                diagnosticLogger.log("DIAGNOSTIC: handleVoiceIntent() - StopSpeaking")
+                Log.d(TAG, "DIAGNOSTIC: handleVoiceIntent() - StopSpeaking")
+                voiceController.stopSpeaking()
+            }
+            IntentParser.Intent.RepeatLast -> {
+                diagnosticLogger.log("DIAGNOSTIC: handleVoiceIntent() - RepeatLast")
+                Log.d(TAG, "DIAGNOSTIC: handleVoiceIntent() - RepeatLast")
+                onVoiceError("Repeat not yet implemented")
+            }
+            is IntentParser.Intent.Unknown -> {
+                diagnosticLogger.log("DIAGNOSTIC: handleVoiceIntent() - Unknown, treating as search: ${intent.originalText}")
+                Log.d(TAG, "DIAGNOSTIC: handleVoiceIntent() - Unknown, treating as search: ${intent.originalText}")
+                // Treat unknown as search query
+                extractSearchQuery(intent.originalText)?.let { searchWeb(it) }
+            }
+        }
+    }
+
+    private fun onVoiceResult(message: String) {
+        diagnosticLogger.log("DIAGNOSTIC: onVoiceResult() called with message = '$message'")
+        Log.d(TAG, "DIAGNOSTIC: onVoiceResult() called with message = '$message'")
+        // Add to conversation context
+        // Note: We need the original recognized text for context
+        // For now, we'll add the result message
+        conversationContext.addExchange("", message)
+        showResult(message)
+    }
+
+    private fun onVoiceError(error: String) {
+        diagnosticLogger.log("DIAGNOSTIC: onVoiceError() called with error = '$error'")
+        Log.d(TAG, "DIAGNOSTIC: onVoiceError() called with error = '$error'")
+        showError(error)
+        // Return to idle state after error
+        voiceUIController.setState(VoiceUIController.VoiceState.IDLE)
     }
 
     private fun setupWindowInsets() {
@@ -111,7 +261,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupTextInput() {
         // Set initial status
-        binding.statusText.text = getString(R.string.enter_command)
+        binding.statusText.text = getString(R.string.tap_mic_to_speak)
         binding.commandText.visibility = View.GONE
 
         // Set up text change listener on the input for / autocomplete
@@ -275,6 +425,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupClickListeners() {
         binding.sendButton.setOnClickListener { submitCommand() }
+
+        // Long-press on status text to export diagnostic logs
+        binding.statusText.setOnLongClickListener {
+            exportDiagnosticLogs()
+            true
+        }
     }
 
     private fun checkPermissions() {
@@ -337,6 +493,10 @@ class MainActivity : AppCompatActivity() {
             "whatsapp" -> extractContactAndMessage(args)?.let { (contact, message) -> resolveAndSendWhatsApp(contact, message) }
             "search" -> extractSearchQuery(args)?.let { searchWeb(it) }
             "help" -> showHelp(args)
+            "diagnostics" -> {
+                diagnosticLogger.log("DIAGNOSTIC: /diagnostics command executed")
+                exportDiagnosticLogs()
+            }
             else -> {
                 val helpText = CommandRegistry.getHelp(trigger)
                 showResult(helpText)
@@ -357,7 +517,7 @@ class MainActivity : AppCompatActivity() {
                 extractSearchQuery(lowerCommand)?.let { searchWeb(it) }
             }
             else -> {
-                val msg = "Command not recognized. Try: /open app name, /call contact name, /whatsapp contact message, /search query, or /help"
+                val msg = "Command not recognized. Try: /open app name, /call contact name, /whatsapp contact message, /search query, /diagnostics, or /help"
                 showResult(msg)
             }
         }
@@ -374,18 +534,54 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showResult(message: String) {
+        diagnosticLogger.log("DIAGNOSTIC: showResult() called with message = '$message'")
+        Log.d(TAG, "DIAGNOSTIC: showResult() called with message = '$message'")
         // Display result centered in commandText (replaces temporary status)
         binding.commandText.text = message
         binding.commandText.visibility = View.VISIBLE
         // No Toast - result is shown in the conversation area
+        // Report to voice controller if a voice action is pending
+        voiceController.reportVoiceResult(message)
     }
 
     private fun showError(message: String) {
+        diagnosticLogger.log("DIAGNOSTIC: showError() called with message = '$message'")
+        Log.d(TAG, "DIAGNOSTIC: showError() called with message = '$message'")
         // Display error centered in commandText
         binding.commandText.text = message
         binding.commandText.visibility = View.VISIBLE
         // Also show as Toast for immediate visibility of errors
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+        // Report to voice controller if a voice action is pending
+        voiceController.reportVoiceResult(message)
+    }
+
+    private fun exportDiagnosticLogs() {
+        diagnosticLogger.log("DIAGNOSTIC: Export diagnostic logs requested")
+        Log.d(TAG, "DIAGNOSTIC: Export diagnostic logs requested")
+
+        val logFile = diagnosticLogger.getLogFile()
+        val uri = androidx.core.content.FileProvider.getUriForFile(
+            this,
+            "${packageName}.fileprovider",
+            logFile
+        )
+
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            putExtra(Intent.EXTRA_SUBJECT, "Buddy V2 Voice Diagnostic Log")
+            putExtra(Intent.EXTRA_TEXT, "Voice diagnostic log from Buddy V2 app")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+
+        try {
+            startActivity(Intent.createChooser(shareIntent, "Export Diagnostic Logs"))
+            diagnosticLogger.log("DIAGNOSTIC: Share intent started for diagnostic log export")
+        } catch (e: ActivityNotFoundException) {
+            diagnosticLogger.log("DIAGNOSTIC: No app available to share log file")
+            Toast.makeText(this, "No app available to share log file", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun extractAppName(command: String): String? {
@@ -447,16 +643,185 @@ class MainActivity : AppCompatActivity() {
         return null
     }
 
+    /**
+     * Extracts contact name and message from a WhatsApp command using contact-aware parsing.
+     * Matches the longest valid contact name from the start of the input against saved contacts.
+     * Everything after the matched contact name becomes the message.
+     * Returns null if no contact matches (triggers contact-not-found error upstream).
+     */
     private fun extractContactAndMessage(command: String): Pair<String, String>? {
-        val whatsappMatch = "whatsapp\\s+(.+?)\\s*(?:,|\\s+)(?:tell\\s+(?:him|her|them)\\s+)?(.+)".toRegex().find(command)
-        val messageMatch = "message\\s+(.+?)\\s*(?:,|\\s+)(?:tell\\s+(?:him|her|them)\\s+)?(.+)".toRegex().find(command)
-        val simpleWhatsAppMatch = "whatsapp\\s+(.+?)\\s+(.+)".toRegex().find(command)
-        val simpleMessageMatch = "message\\s+(.+?)\\s+(.+)".toRegex().find(command)
+        val input = command.trim()
 
-        return whatsappMatch?.let { Pair(it.groupValues[1], it.groupValues[2]) }
-            ?: messageMatch?.let { Pair(it.groupValues[1], it.groupValues[2]) }
-            ?: simpleWhatsAppMatch?.let { Pair(it.groupValues[1], it.groupValues[2]) }
-            ?: simpleMessageMatch?.let { Pair(it.groupValues[1], it.groupValues[2]) }
+        // Remove "whatsapp" or "message" prefix if present
+        var remaining = input
+        if (remaining.lowercase().startsWith("whatsapp ")) {
+            remaining = remaining.substring("whatsapp ".length).trim()
+        } else if (remaining.lowercase().startsWith("message ")) {
+            remaining = remaining.substring("message ".length).trim()
+        }
+
+        if (remaining.isBlank()) return null
+
+        // Get all contact names with phone numbers
+        val contacts = loadContactsWithPhoneNumbers()
+        if (contacts.isEmpty()) return null
+
+        // Normalize input for matching: lowercase, collapse whitespace
+        val normalizedInput = normalizeForMatching(remaining)
+
+        // Build normalization map to translate normalized positions back to original
+        val normalizationMap = buildNormalizationMap(remaining)
+
+        // Find the longest contact name that matches the start of the input
+        var bestMatch: String? = null
+        var bestMatchLength = 0
+
+        for (contact in contacts) {
+            val normalizedContact = normalizeForMatching(contact)
+            if (normalizedInput.startsWith(normalizedContact)) {
+                // Check if it's a word boundary (next char is space or end)
+                val contactLen = normalizedContact.length
+                val isBoundary = contactLen == normalizedInput.length || normalizedInput[contactLen].isWhitespace()
+                if (isBoundary && contactLen > bestMatchLength) {
+                    bestMatch = contact
+                    bestMatchLength = contactLen
+                }
+            }
+        }
+
+        // If we found a match, split into contact and message
+        bestMatch?.let { matchedContact ->
+            // Find the actual end position in the original (non-normalized) remaining string
+            // using the normalization map to handle whitespace differences correctly
+            val contactEndPos = findOriginalPositionForNormalizedLength(
+                remaining, bestMatchLength, normalizationMap
+            )
+
+            val message = if (contactEndPos > 0 && contactEndPos < remaining.length) {
+                remaining.substring(contactEndPos).trim()
+            } else {
+                ""
+            }
+
+            // Store for conversation context
+            conversationContext.setLastMatchedContact(matchedContact)
+
+            return Pair(matchedContact, message)
+        }
+
+        // No contact matched
+        return null
+    }
+
+    /**
+     * Loads all contacts that have phone numbers.
+     * Returns list of display names.
+     */
+    private fun loadContactsWithPhoneNumbers(): List<String> {
+        val contentResolver: ContentResolver = contentResolver
+        val contacts = mutableListOf<String>()
+
+        val projection = arrayOf(
+            ContactsContract.Contacts._ID,
+            ContactsContract.Contacts.DISPLAY_NAME,
+            ContactsContract.Contacts.HAS_PHONE_NUMBER
+        )
+
+        val cursor = contentResolver.query(
+            ContactsContract.Contacts.CONTENT_URI,
+            projection,
+            "${ContactsContract.Contacts.HAS_PHONE_NUMBER} = ?",
+            arrayOf("1"),
+            null
+        )
+
+        cursor?.use { c ->
+            while (c.moveToNext()) {
+                val name = c.getString(c.getColumnIndexOrThrow(ContactsContract.Contacts.DISPLAY_NAME))
+                if (name.isNotBlank()) {
+                    contacts.add(name.trim())
+                }
+            }
+        }
+
+        return contacts
+    }
+
+    /**
+     * Normalizes string for contact matching: lowercase, collapse whitespace, trim.
+     */
+    private fun normalizeForMatching(input: String): String {
+        return input.lowercase(Locale.getDefault())
+            .replace("\\s+".toRegex(), " ")
+            .trim()
+    }
+
+    /**
+     * Builds a mapping from normalized string indices to original string indices.
+     * Accounts for trim (leading/trailing whitespace removal) and whitespace collapsing.
+     * Returns a list where each index in the normalized string maps to the corresponding
+     * index in the original string (the position of that character in the original).
+     */
+    private fun buildNormalizationMap(original: String): List<Int> {
+        val map = mutableListOf<Int>()
+        var origPos = 0
+        var inWhitespace = false
+
+        // Skip leading whitespace (trim)
+        while (origPos < original.length && original[origPos].isWhitespace()) {
+            origPos++
+        }
+
+        while (origPos < original.length) {
+            val c = original[origPos]
+            if (c.isWhitespace()) {
+                if (!inWhitespace) {
+                    // First whitespace in a sequence -> maps to a single space in normalized
+                    map.add(origPos)
+                    inWhitespace = true
+                }
+                // Consecutive whitespace doesn't add to normalized string
+            } else {
+                // Non-whitespace character -> maps to itself in normalized
+                map.add(origPos)
+                inWhitespace = false
+            }
+            origPos++
+        }
+
+        // Handle trailing whitespace trim - if we ended on whitespace, the last entry
+        // corresponds to a space that would be trimmed, so remove it
+        if (map.isNotEmpty() && inWhitespace) {
+            map.removeAt(map.size - 1)
+        }
+
+        return map
+    }
+
+    /**
+     * Finds the position in the original string where the normalized prefix of given length ends.
+     * Uses the normalization map to translate normalized position to original position.
+     */
+    private fun findOriginalPositionForNormalizedLength(
+        original: String,
+        normalizedLength: Int,
+        normalizationMap: List<Int>
+    ): Int {
+        if (normalizedLength <= 0) return 0
+        if (normalizedLength >= normalizationMap.size) return original.length
+
+        // The normalizedLength-th character in normalized (0-indexed) maps to this position
+        val origIndex = normalizationMap[normalizedLength - 1]
+
+        // Return position AFTER this character in original
+        var pos = origIndex + 1
+
+        // Skip any trailing whitespace in original that was collapsed
+        while (pos < original.length && original[pos].isWhitespace()) {
+            pos++
+        }
+
+        return pos
     }
 
     private fun extractSearchQuery(command: String): String? {
@@ -482,6 +847,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun openApp(appName: String) {
+        diagnosticLogger.log("DIAGNOSTIC: openApp() called with appName = '$appName'")
+        Log.d(TAG, "DIAGNOSTIC: openApp() called with appName = '$appName'")
         val packageManager = packageManager
         val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
         val activities = packageManager.queryIntentActivities(intent, 0)
@@ -503,6 +870,8 @@ class MainActivity : AppCompatActivity() {
     // ===== CONTACT RESOLUTION =====
 
     private fun resolveAndCall(contactName: String) {
+        diagnosticLogger.log("DIAGNOSTIC: resolveAndCall() called with contactName = '$contactName'")
+        Log.d(TAG, "DIAGNOSTIC: resolveAndCall() called with contactName = '$contactName'")
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
             pendingCallNumber = null
             ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.READ_CONTACTS), CONTACTS_PERMISSION_REQUEST_CODE)
@@ -523,6 +892,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun resolveAndSendWhatsApp(contactName: String, message: String) {
+        diagnosticLogger.log("DIAGNOSTIC: resolveAndSendWhatsApp() called with contactName = '$contactName', message = '$message'")
+        Log.d(TAG, "DIAGNOSTIC: resolveAndSendWhatsApp() called with contactName = '$contactName', message = '$message'")
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
             pendingWhatsAppContact = contactName
             pendingWhatsAppMessage = message
@@ -631,6 +1002,8 @@ class MainActivity : AppCompatActivity() {
     // ===== ACTION EXECUTION =====
 
     private fun makeCall(phoneNumber: String) {
+        diagnosticLogger.log("DIAGNOSTIC: makeCall() called with phoneNumber = '$phoneNumber'")
+        Log.d(TAG, "DIAGNOSTIC: makeCall() called with phoneNumber = '$phoneNumber'")
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED) {
             val intent = Intent(Intent.ACTION_CALL, Uri.parse("tel:$phoneNumber"))
             try {
@@ -642,10 +1015,14 @@ class MainActivity : AppCompatActivity() {
         } else {
             pendingCallNumber = phoneNumber
             ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.CALL_PHONE), CALL_PERMISSION_REQUEST_CODE)
+            // Report error to complete voice action cycle
+            showError("Call permission required")
         }
     }
 
     private fun sendWhatsApp(phoneNumber: String, message: String) {
+        diagnosticLogger.log("DIAGNOSTIC: sendWhatsApp() called with phoneNumber = '$phoneNumber', message = '$message'")
+        Log.d(TAG, "DIAGNOSTIC: sendWhatsApp() called with phoneNumber = '$phoneNumber', message = '$message'")
         val packageManager = packageManager
         val whatsappPackage = if (packageManager.getLaunchIntentForPackage("com.whatsapp") != null) {
             "com.whatsapp"
@@ -674,6 +1051,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun searchWeb(query: String) {
+        diagnosticLogger.log("DIAGNOSTIC: searchWeb() called with query = '$query'")
+        Log.d(TAG, "DIAGNOSTIC: searchWeb() called with query = '$query'")
         val encodedQuery = Uri.encode(query)
         val url = "https://www.google.com/search?q=$encodedQuery"
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
@@ -712,17 +1091,26 @@ class MainActivity : AppCompatActivity() {
                     showError("Contacts permission denied")
                 }
             }
+            MIC_PERMISSION_REQUEST_CODE -> {
+                // Voice controller handles its own permission result
+                voiceController.onRequestPermissionsResult(requestCode, grantResults)
+            }
         }
     }
 
     override fun onDestroy() {
         autocompletePopup?.dismiss()
+        voiceUIController.cleanup()
+        diagnosticLogger.log("=== Buddy V2 Diagnostic Session Ended ===")
+        diagnosticLogger.shutdown()
         super.onDestroy()
     }
 
     override fun onBackPressed() {
         if (autocompletePopup?.isShowing == true) {
             autocompletePopup?.dismiss()
+        } else if (voiceUIController.getState() != VoiceUIController.VoiceState.IDLE) {
+            voiceController.cancelAll()
         } else {
             super.onBackPressed()
         }

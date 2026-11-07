@@ -12,4 +12,21 @@
     <string name="whatsapp_not_installed">WhatsApp is not installed.</string>
     <string name="call_permission_denied">Call permission denied.</string>
     <string name="error_occurred">Error: %s</string>
+
+    <!-- Voice strings -->
+    <string name="tap_mic_to_speak">Press and hold microphone to speak</string>
+    <string name="listening_indicator">Listening…</string>
+    <string name="processing_indicator">Understanding…</string>
+    <string name="speaking_indicator">Speaking…</string>
+    <string name="speaking_hint">Speak now…</string>
+    <string name="type_or_speak_command">Type or speak a command</string>
+    <string name="voice_start_listening">Start listening</string>
+    <string name="voice_stop_listening">Stop listening</string>
+    <string name="voice_processing">Processing</string>
+    <string name="voice_stop_speaking">Stop speaking</string>
+    <string name="no_speech_detected">No speech detected. Try again.</string>
+    <string name="speech_timed_out">Speech timed out. Try again.</string>
+    <string name="mic_permission_required">Microphone permission required</string>
+    <string name="hold_to_speak">Hold to speak</string>
+    <string name="release_to_send">Release to send</string>
 </resources>

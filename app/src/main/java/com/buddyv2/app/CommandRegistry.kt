@@ -18,6 +18,14 @@ object CommandRegistry {
     }
 
     /**
+     * Command parameter description.
+     */
+    data class Parameter(
+        val name: String,
+        val description: String
+    )
+
+    /**
      * Command definition.
      * @property id Unique identifier
      * @property name Display name (e.g., "Open app")
@@ -27,6 +35,7 @@ object CommandRegistry {
      * @property category Category for grouping
      * @property example Example usage
      * @property trigger The / trigger keyword (e.g., "open")
+     * @property parameters List of parameters with descriptions
      */
     data class Command(
         val id: String,
@@ -36,7 +45,8 @@ object CommandRegistry {
         val iconRes: Int,
         val category: Category,
         val example: String,
-        val trigger: String = id
+        val trigger: String = id,
+        val parameters: List<Parameter> = emptyList()
     )
 
     // ===== EXACTLY 5 COMMANDS =====
@@ -50,7 +60,10 @@ object CommandRegistry {
             iconRes = android.R.drawable.ic_menu_agenda,
             category = Category.APPS,
             example = "/open chrome",
-            trigger = "open"
+            trigger = "open",
+            parameters = listOf(
+                Parameter("App name", "Name of the installed application to launch (e.g., Chrome, WhatsApp, Settings)")
+            )
         ),
 
         // 2. CALL - single entry, backed by actual contact-call functionality
@@ -62,19 +75,26 @@ object CommandRegistry {
             iconRes = android.R.drawable.ic_menu_call,
             category = Category.COMMUNICATION,
             example = "/call John Doe",
-            trigger = "call"
+            trigger = "call",
+            parameters = listOf(
+                Parameter("Contact name", "Saved contact's name as it appears in your phonebook (e.g., John, Jane Smith)")
+            )
         ),
 
         // 3. WHATSAPP - single entry, both "whatsapp" and "message" resolve here
         Command(
             id = "whatsapp_contact",
-            name = "WhatsApp contact",
+            name = "WhatsApp",
             syntax = "/whatsapp <contact> <message>",
             description = "Send WhatsApp message to a contact",
             iconRes = android.R.drawable.ic_menu_send,
             category = Category.COMMUNICATION,
-            example = "/whatsapp John Hello!",
-            trigger = "whatsapp"
+            example = "/whatsapp Abhishek Sharma Hello, how are you?",
+            trigger = "whatsapp",
+            parameters = listOf(
+                Parameter("Contact", "Saved contact's name (supports multi-word names, e.g., Abhishek Sharma, John Smith)"),
+                Parameter("Message", "Text message to send (can contain spaces, punctuation, emoji)")
+            )
         ),
 
         // 4. SEARCH - single entry, aliases: search, google, look up, find
@@ -86,7 +106,10 @@ object CommandRegistry {
             iconRes = android.R.drawable.ic_menu_search,
             category = Category.SEARCH,
             example = "/search weather today",
-            trigger = "search"
+            trigger = "search",
+            parameters = listOf(
+                Parameter("Query", "Search terms (e.g., weather today, nearby restaurants, how to bake bread)")
+            )
         ),
 
         // 5. HELP - shows available commands and usage
@@ -97,8 +120,11 @@ object CommandRegistry {
             description = "Show help for all commands or a specific command",
             iconRes = android.R.drawable.ic_menu_help,
             category = Category.SYSTEM,
-            example = "/help open",
-            trigger = "help"
+            example = "/help whatsapp",
+            trigger = "help",
+            parameters = listOf(
+                Parameter("Command (optional)", "Command name to get detailed help for (e.g., open, call, whatsapp, search)")
+            )
         )
     )
 
@@ -134,22 +160,47 @@ object CommandRegistry {
      */
     fun getHelp(commandTrigger: String?): String {
         return when (commandTrigger?.lowercase()) {
-            "open" -> "Open app\n\nPurpose: Launch an installed application\nSyntax: /open <app name>\nExample: /open chrome"
-            "call" -> "Call contact\n\nPurpose: Call a contact from your phonebook\nSyntax: /call <contact name>\nExample: /call John Doe"
-            "whatsapp" -> "WhatsApp contact\n\nPurpose: Send WhatsApp message to a contact\nSyntax: /whatsapp <contact> <message>\nExample: /whatsapp John Hello!"
-            "search" -> "Search web\n\nPurpose: Search the web via Google\nSyntax: /search <query>\nExample: /search weather today"
-            "help" -> "Help\n\nPurpose: Show help for all commands or a specific command\nSyntax: /help [command]\nExample: /help open"
-            null -> {
-                val sb = StringBuilder("Available commands:\n\n")
-                allCommands.forEach { cmd ->
-                    sb.append("${cmd.syntax}\n")
-                    sb.append("  ${cmd.description}\n")
-                    sb.append("  Example: ${cmd.example}\n\n")
-                }
-                sb.append("Type /help <command> for more details (e.g., /help open)")
-                sb.toString()
-            }
+            "open" -> formatCommandHelp(allCommands.find { it.trigger == "open" }!!)
+            "call" -> formatCommandHelp(allCommands.find { it.trigger == "call" }!!)
+            "whatsapp" -> formatCommandHelp(allCommands.find { it.trigger == "whatsapp" }!!)
+            "search" -> formatCommandHelp(allCommands.find { it.trigger == "search" }!!)
+            "help" -> formatCommandHelp(allCommands.find { it.trigger == "help" }!!)
+            null -> formatGeneralHelp()
             else -> "Unknown command: '$commandTrigger'\n\nAvailable commands: ${allCommands.joinToString(", ") { it.trigger }}.\nType /help for all commands."
         }
+    }
+
+    private fun formatCommandHelp(cmd: Command): String {
+        val sb = StringBuilder()
+        sb.append("Command: ${cmd.name}\n")
+        sb.append("Syntax: ${cmd.syntax}\n")
+        sb.append("Example: ${cmd.example}\n")
+        sb.append("Description: ${cmd.description}\n")
+        if (cmd.parameters.isNotEmpty()) {
+            sb.append("Parameters:\n")
+            cmd.parameters.forEach { param ->
+                sb.append("- ${param.name}: ${param.description}\n")
+            }
+        }
+        return sb.toString()
+    }
+
+    private fun formatGeneralHelp(): String {
+        val sb = StringBuilder("Available commands:\n\n")
+        allCommands.forEach { cmd ->
+            sb.append("Command: ${cmd.name}\n")
+            sb.append("Syntax: ${cmd.syntax}\n")
+            sb.append("Example: ${cmd.example}\n")
+            sb.append("Description: ${cmd.description}\n")
+            if (cmd.parameters.isNotEmpty()) {
+                sb.append("Parameters:\n")
+                cmd.parameters.forEach { param ->
+                    sb.append("  - ${param.name}: ${param.description}\n")
+                }
+            }
+            sb.append("\n")
+        }
+        sb.append("Type /help <command> for more details (e.g., /help whatsapp)")
+        return sb.toString()
     }
 }
