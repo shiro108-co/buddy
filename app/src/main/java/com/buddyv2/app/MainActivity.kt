@@ -88,6 +88,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initializeVoice() {
+        Log.d(TAG, "DIAGNOSTIC: initializeVoice() called")
         conversationContext = ConversationContext()
         intentParser = IntentParser(conversationContext)
         voiceUIController = VoiceUIController(
@@ -116,19 +117,23 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleVoiceIntent(intent: IntentParser.Intent) {
+        Log.d(TAG, "DIAGNOSTIC: handleVoiceIntent() called with intent = $intent")
         // Mark that a voice action is pending so result will be reported to voice controller
         voiceController.markVoiceActionPending()
 
         when (intent) {
             is IntentParser.Intent.OpenApp -> {
+                Log.d(TAG, "DIAGNOSTIC: handleVoiceIntent() - OpenApp: ${intent.appName}")
                 conversationContext.setLastAction("open")
                 extractAppName(intent.appName)?.let { openApp(it) }
             }
             is IntentParser.Intent.CallContact -> {
+                Log.d(TAG, "DIAGNOSTIC: handleVoiceIntent() - CallContact: ${intent.contactName}")
                 conversationContext.setLastAction("call")
                 extractContactName(intent.contactName)?.let { resolveAndCall(it) }
             }
             is IntentParser.Intent.WhatsAppMessage -> {
+                Log.d(TAG, "DIAGNOSTIC: handleVoiceIntent() - WhatsAppMessage: contact='${intent.contactName}'")
                 conversationContext.setLastAction("whatsapp")
                 // Use contact-aware parsing for the full remaining text
                 extractContactAndMessage(intent.contactName)?.let { (contact, message) ->
@@ -136,20 +141,24 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             is IntentParser.Intent.SearchWeb -> {
+                Log.d(TAG, "DIAGNOSTIC: handleVoiceIntent() - SearchWeb: ${intent.query}")
                 conversationContext.setLastAction("search")
                 extractSearchQuery(intent.query)?.let { searchWeb(it) }
             }
             is IntentParser.Intent.Help -> {
+                Log.d(TAG, "DIAGNOSTIC: handleVoiceIntent() - Help: ${intent.topic}")
                 showHelp(intent.topic ?: "")
             }
             IntentParser.Intent.StopSpeaking -> {
+                Log.d(TAG, "DIAGNOSTIC: handleVoiceIntent() - StopSpeaking")
                 voiceController.stopSpeaking()
             }
             IntentParser.Intent.RepeatLast -> {
-                // Could implement repeat last response
+                Log.d(TAG, "DIAGNOSTIC: handleVoiceIntent() - RepeatLast")
                 onVoiceError("Repeat not yet implemented")
             }
             is IntentParser.Intent.Unknown -> {
+                Log.d(TAG, "DIAGNOSTIC: handleVoiceIntent() - Unknown, treating as search: ${intent.originalText}")
                 // Treat unknown as search query
                 extractSearchQuery(intent.originalText)?.let { searchWeb(it) }
             }
@@ -157,6 +166,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun onVoiceResult(message: String) {
+        Log.d(TAG, "DIAGNOSTIC: onVoiceResult() called with message = '$message'")
         // Add to conversation context
         // Note: We need the original recognized text for context
         // For now, we'll add the result message
@@ -165,6 +175,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun onVoiceError(error: String) {
+        Log.d(TAG, "DIAGNOSTIC: onVoiceError() called with error = '$error'")
         showError(error)
         // Return to idle state after error
         voiceUIController.setState(VoiceUIController.VoiceState.IDLE)
@@ -470,6 +481,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showResult(message: String) {
+        Log.d(TAG, "DIAGNOSTIC: showResult() called with message = '$message'")
         // Display result centered in commandText (replaces temporary status)
         binding.commandText.text = message
         binding.commandText.visibility = View.VISIBLE
@@ -479,6 +491,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showError(message: String) {
+        Log.d(TAG, "DIAGNOSTIC: showError() called with message = '$message'")
         // Display error centered in commandText
         binding.commandText.text = message
         binding.commandText.visibility = View.VISIBLE
@@ -751,6 +764,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun openApp(appName: String) {
+        Log.d(TAG, "DIAGNOSTIC: openApp() called with appName = '$appName'")
         val packageManager = packageManager
         val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
         val activities = packageManager.queryIntentActivities(intent, 0)
@@ -772,6 +786,7 @@ class MainActivity : AppCompatActivity() {
     // ===== CONTACT RESOLUTION =====
 
     private fun resolveAndCall(contactName: String) {
+        Log.d(TAG, "DIAGNOSTIC: resolveAndCall() called with contactName = '$contactName'")
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
             pendingCallNumber = null
             ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.READ_CONTACTS), CONTACTS_PERMISSION_REQUEST_CODE)
@@ -792,6 +807,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun resolveAndSendWhatsApp(contactName: String, message: String) {
+        Log.d(TAG, "DIAGNOSTIC: resolveAndSendWhatsApp() called with contactName = '$contactName', message = '$message'")
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
             pendingWhatsAppContact = contactName
             pendingWhatsAppMessage = message
@@ -900,6 +916,7 @@ class MainActivity : AppCompatActivity() {
     // ===== ACTION EXECUTION =====
 
     private fun makeCall(phoneNumber: String) {
+        Log.d(TAG, "DIAGNOSTIC: makeCall() called with phoneNumber = '$phoneNumber'")
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED) {
             val intent = Intent(Intent.ACTION_CALL, Uri.parse("tel:$phoneNumber"))
             try {
@@ -915,6 +932,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun sendWhatsApp(phoneNumber: String, message: String) {
+        Log.d(TAG, "DIAGNOSTIC: sendWhatsApp() called with phoneNumber = '$phoneNumber', message = '$message'")
         val packageManager = packageManager
         val whatsappPackage = if (packageManager.getLaunchIntentForPackage("com.whatsapp") != null) {
             "com.whatsapp"
@@ -943,6 +961,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun searchWeb(query: String) {
+        Log.d(TAG, "DIAGNOSTIC: searchWeb() called with query = '$query'")
         val encodedQuery = Uri.encode(query)
         val url = "https://www.google.com/search?q=$encodedQuery"
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))

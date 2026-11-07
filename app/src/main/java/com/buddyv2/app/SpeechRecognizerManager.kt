@@ -2,11 +2,13 @@ package com.buddyv2.app
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.util.Log
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleObserver
 import androidx.lifecycle.OnLifecycleEvent
@@ -14,6 +16,7 @@ import androidx.lifecycle.OnLifecycleEvent
 /**
  * Manages Android's SpeechRecognizer with proper lifecycle handling.
  * Provides callbacks for recognition events and partial results.
+ * Includes comprehensive diagnostic logging for troubleshooting.
  */
 class SpeechRecognizerManager(
     private val context: Context,
@@ -38,7 +41,25 @@ class SpeechRecognizerManager(
     }
 
     fun initialize() {
-        if (SpeechRecognizer.isRecognitionAvailable(context)) {
+        // DIAGNOSTIC: Check RECORD_AUDIO permission at runtime
+        val hasRecordPermission = ContextCompat.checkSelfPermission(
+            context, android.Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+        Log.d(TAG, "DIAGNOSTIC: RECORD_AUDIO permission granted = $hasRecordPermission")
+
+        // DIAGNOSTIC: Check if SpeechRecognizer is available
+        val isAvailable = SpeechRecognizer.isRecognitionAvailable(context)
+        Log.d(TAG, "DIAGNOSTIC: SpeechRecognizer.isRecognitionAvailable() = $isAvailable")
+
+        // DIAGNOSTIC: Check recognition service info
+        if (isAvailable) {
+            val service = SpeechRecognizer.createSpeechRecognizer(context)
+            // Note: Can't directly get service name without reflection, but we can check
+            Log.d(TAG, "DIAGNOSTIC: SpeechRecognizer created successfully")
+            service.destroy()
+        }
+
+        if (isAvailable) {
             speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context)
             speechRecognizer?.setRecognitionListener(recognitionListener)
             Log.d(TAG, "SpeechRecognizer initialized")
@@ -65,14 +86,32 @@ class SpeechRecognizerManager(
             putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 1000)
             putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1500)
             putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 500)
+
+            // DIAGNOSTIC: Log recognition language configuration
+            val language = java.util.Locale.getDefault().toLanguageTag()
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, language)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, language)
+            putExtra(RecognizerIntent.EXTRA_ONLY_RETURN_LANGUAGE_PREFERENCE, true)
+            Log.d(TAG, "DIAGNOSTIC: Recognition language set to: $language")
         }
 
         hasStartedSpeaking = false
         isListening = true
 
+        // DIAGNOSTIC: Log intent extras
+        Log.d(TAG, "DIAGNOSTIC: Starting recognition with extras:")
+        Log.d(TAG, "  EXTRA_LANGUAGE_MODEL = ${RecognizerIntent.LANGUAGE_MODEL_FREE_FORM}")
+        Log.d(TAG, "  EXTRA_PARTIAL_RESULTS = true")
+        Log.d(TAG, "  EXTRA_MAX_RESULTS = 1")
+        Log.d(TAG, "  EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS = 1000")
+        Log.d(TAG, "  EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS = 1500")
+        Log.d(TAG, "  EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS = 500")
+        Log.d(TAG, "  EXTRA_LANGUAGE = ${java.util.Locale.getDefault().toLanguageTag()}")
+        Log.d(TAG, "  EXTRA_CALLING_PACKAGE = ${context.packageName}")
+
         try {
             recognizer.startListening(intent)
-            Log.d(TAG, "Started listening")
+            Log.d(TAG, "Started listening - recognizer.startListening() called")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start listening", e)
             isListening = false
@@ -83,6 +122,7 @@ class SpeechRecognizerManager(
     fun stopListening() {
         if (!isListening) return
 
+        Log.d(TAG, "DIAGNOSTIC: stopListening() called")
         speechRecognizer?.stopListening()
         isListening = false
         Log.d(TAG, "Stopped listening")
@@ -91,12 +131,14 @@ class SpeechRecognizerManager(
     fun cancel() {
         if (!isListening) return
 
+        Log.d(TAG, "DIAGNOSTIC: cancel() called - recognizer.cancel()")
         speechRecognizer?.cancel()
         isListening = false
         Log.d(TAG, "Cancelled recognition")
     }
 
     fun destroy() {
+        Log.d(TAG, "DIAGNOSTIC: destroy() called")
         cancel()
         speechRecognizer?.destroy()
         speechRecognizer = null
@@ -108,32 +150,38 @@ class SpeechRecognizerManager(
 
     private val recognitionListener = object : RecognitionListener {
         override fun onReadyForSpeech(params: Bundle?) {
-            Log.d(TAG, "onReadyForSpeech")
+            Log.d(TAG, "DIAGNOSTIC: onReadyForSpeech() called")
+            if (params != null) {
+                Log.d(TAG, "  params = $params")
+            }
             hasStartedSpeaking = false
             listener.onReadyForSpeech()
         }
 
         override fun onBeginningOfSpeech() {
-            Log.d(TAG, "onBeginningOfSpeech")
+            Log.d(TAG, "DIAGNOSTIC: onBeginningOfSpeech() called - USER STARTED SPEAKING")
             hasStartedSpeaking = true
             listener.onBeginningOfSpeech()
         }
 
         override fun onRmsChanged(rmsdB: Float) {
+            // DIAGNOSTIC: Log RMS (audio level) changes - shows microphone is capturing audio
+            Log.d(TAG, "DIAGNOSTIC: onRmsChanged() rmsdB = $rmsdB")
             // Optional: could expose volume level for UI visualization
         }
 
         override fun onBufferReceived(buffer: ByteArray?) {
-            // Not used
+            Log.d(TAG, "DIAGNOSTIC: onBufferReceived() buffer size = ${buffer?.size ?: 0}")
         }
 
         override fun onEndOfSpeech() {
-            Log.d(TAG, "onEndOfSpeech")
+            Log.d(TAG, "DIAGNOSTIC: onEndOfSpeech() called - SPEECH ENDED, waiting for results")
             listener.onEndOfSpeech()
         }
 
         override fun onError(errorCode: Int) {
-            Log.w(TAG, "onError: $errorCode - ${errorCodeToString(errorCode)}")
+            val errorString = errorCodeToString(errorCode)
+            Log.w(TAG, "DIAGNOSTIC: onError() errorCode=$errorCode ($errorString)")
             isListening = false
             val errorMessage = when (errorCode) {
                 SpeechRecognizer.ERROR_AUDIO -> "Audio recording error"
@@ -151,31 +199,44 @@ class SpeechRecognizerManager(
         }
 
         override fun onResults(results: Bundle?) {
-            Log.d(TAG, "onResults")
+            Log.d(TAG, "DIAGNOSTIC: onResults() called")
+            if (results != null) {
+                Log.d(TAG, "  results keys = ${results.keySet()}")
+            }
             isListening = false
             val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+            Log.d(TAG, "DIAGNOSTIC: onResults() matches = $matches")
             matches?.firstOrNull()?.let { text ->
                 if (text.isNotBlank()) {
+                    Log.d(TAG, "DIAGNOSTIC: onResults() recognized text = '$text'")
                     listener.onResults(text)
                 } else {
+                    Log.w(TAG, "DIAGNOSTIC: onResults() empty text, sending NO_MATCH")
                     listener.onError(SpeechRecognizer.ERROR_NO_MATCH, "Empty recognition result")
                 }
             } ?: run {
+                Log.w(TAG, "DIAGNOSTIC: onResults() no matches, sending NO_MATCH")
                 listener.onError(SpeechRecognizer.ERROR_NO_MATCH, "No recognition results")
             }
         }
 
         override fun onPartialResults(partialResults: Bundle?) {
+            Log.d(TAG, "DIAGNOSTIC: onPartialResults() called")
+            if (partialResults != null) {
+                Log.d(TAG, "  partialResults keys = ${partialResults.keySet()}")
+            }
             val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+            Log.d(TAG, "DIAGNOSTIC: onPartialResults() matches = $matches")
             matches?.firstOrNull()?.let { text ->
                 if (text.isNotBlank()) {
+                    Log.d(TAG, "DIAGNOSTIC: onPartialResults() partial text = '$text'")
                     listener.onPartialResults(text)
                 }
             }
         }
 
         override fun onEvent(eventType: Int, params: Bundle?) {
-            // Not used
+            Log.d(TAG, "DIAGNOSTIC: onEvent() eventType=$eventType, params=$params")
         }
     }
 
