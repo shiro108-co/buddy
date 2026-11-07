@@ -2,6 +2,7 @@ package com.buddyv2.app
 
 import android.content.Context
 import android.util.Log
+import com.buddyv2.app.BuildConfig
 import java.io.File
 import java.io.FileWriter
 import java.io.IOException
