@@ -15,7 +15,7 @@ import androidx.core.app.NotificationCompat
 import java.net.URLEncoder
 import java.util.Locale
 
-private class BuddyLocalStore(context: Context) : SQLiteOpenHelper(context, "buddy_local.db", null, 1) {
+class BuddyLocalStore(context: Context) : SQLiteOpenHelper(context, "buddy_local.db", null, 1) {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("CREATE TABLE history(id INTEGER PRIMARY KEY AUTOINCREMENT, command TEXT NOT NULL, created INTEGER NOT NULL)")
         db.execSQL("CREATE TABLE aliases(name TEXT PRIMARY KEY, command TEXT NOT NULL)")
