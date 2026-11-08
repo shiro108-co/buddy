@@ -72,11 +72,12 @@ class BuddyToolsActivity : AppCompatActivity() {
         section("Reminders")
         val reminder = EditText(this).apply { hint = "Reminder text"; setTextColor(-1); setHintTextColor(0xFF999999.toInt()) }
         val minutes = EditText(this).apply { hint = "Minutes from now"; inputType = 2; setTextColor(-1); setHintTextColor(0xFF999999.toInt()) }
-        root.addView(reminder, match()); root.addView(minutes, match())
+        val repeat = CheckBox(this).apply { text = "Repeat at this interval"; setTextColor(-1) }
+        root.addView(reminder, match()); root.addView(minutes, match()); root.addView(repeat, match())
         button("Set reminder") {
             val msg=reminder.text.toString().trim(); val delay=minutes.text.toString().toLongOrNull()
             if(msg.isBlank() || delay==null || delay<1) toast("Enter reminder text and a delay of at least 1 minute")
-            else { scheduleReminder(msg, delay); toast("Reminder scheduled"); store.log("Reminder: $msg") }
+            else { scheduleReminder(msg, delay, repeat.isChecked); toast(if(repeat.isChecked) "Repeating reminder scheduled" else "Reminder scheduled"); store.log("Reminder: $msg") }
         }
         section("Custom commands")
         val alias = EditText(this).apply { hint = "Shortcut name"; setTextColor(-1); setHintTextColor(0xFF999999.toInt()) }
@@ -100,11 +101,14 @@ class BuddyToolsActivity : AppCompatActivity() {
         button("Back") { finish() }
     }
 
-    private fun scheduleReminder(message: String, delayMinutes: Long) {
+    private fun scheduleReminder(message: String, delayMinutes: Long, repeat: Boolean) {
         val intent=Intent(this, ReminderReceiver::class.java).putExtra("message", message)
         val id=(System.currentTimeMillis() % Int.MAX_VALUE).toInt()
         val pending=PendingIntent.getBroadcast(this,id,intent,PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        (getSystemService(ALARM_SERVICE) as AlarmManager).set(AlarmManager.RTC_WAKEUP,System.currentTimeMillis()+delayMinutes*60_000,pending)
+        val alarm = getSystemService(ALARM_SERVICE) as AlarmManager
+        val first = System.currentTimeMillis() + delayMinutes * 60_000
+        if (repeat) alarm.setInexactRepeating(AlarmManager.RTC_WAKEUP, first, delayMinutes * 60_000, pending)
+        else alarm.set(AlarmManager.RTC_WAKEUP, first, pending)
     }
     private fun text(value:String,size:Int=14,bold:Boolean=false) { root.addView(TextView(this).apply { text=value; textSize=size.toFloat(); setTextColor(-1); if(bold)setTypeface(null,1); setPadding(0,pad/2,0,pad/2) },match()) }
     private fun section(value:String) { text(value,18,true) }
