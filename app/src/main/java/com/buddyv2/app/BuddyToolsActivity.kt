@@ -40,6 +40,7 @@ class BuddyToolsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         store = BuddyLocalStore(this)
+        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 301)
         tts = TextToSpeech(this) { if (it == TextToSpeech.SUCCESS) tts?.language = Locale.getDefault() }
         root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(pad,pad,pad,pad); setBackgroundColor(0xFF101116.toInt()) }
         val scroll = ScrollView(this).apply { addView(root) }
@@ -82,7 +83,7 @@ class BuddyToolsActivity : AppCompatActivity() {
         val action = EditText(this).apply { hint = "Command or URL to open"; setTextColor(-1); setHintTextColor(0xFF999999.toInt()) }
         root.addView(alias, match()); root.addView(action, match())
         button("Save shortcut") { val a=alias.text.toString().trim(); val c=action.text.toString().trim(); if(a.isBlank()||c.isBlank()) toast("Enter both fields") else { store.saveAlias(a,c); toast("Shortcut saved locally") } }
-        store.aliases().forEach { (a,c) -> text("/$a  →  $c", 13) }
+        store.aliases().forEach { (a,c) -> button("Run /$a") { runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(c))) }.onFailure { startActivity(Intent(Intent.ACTION_WEB_SEARCH).putExtra(android.app.SearchManager.QUERY, c)) } } }
         section("Phone intelligence")
         val stat = android.os.StatFs(android.os.Environment.getDataDirectory().path)
         val total = stat.totalBytes / 1_073_741_824.0; val free = stat.availableBytes / 1_073_741_824.0
