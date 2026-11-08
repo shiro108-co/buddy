@@ -491,8 +491,14 @@ class MainActivity : AppCompatActivity() {
             "search" -> extractSearchQuery(args)?.let { searchWeb(it) }
             "help" -> showHelp(args)
             else -> {
-                val helpText = CommandRegistry.getHelp(trigger)
-                showResult(helpText)
+                val shortcut = BuddyLocalStore(this).aliases().firstOrNull { it.first.equals(trigger, ignoreCase = true) }
+                if (shortcut != null) {
+                    val target = shortcut.second
+                    if (target.startsWith("https://") || target.startsWith("http://")) {
+                        runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(target))) }
+                            .onFailure { showError("Unable to open shortcut URL.") }
+                    } else searchWeb(target)
+                } else showResult(CommandRegistry.getHelp(trigger))
             }
         }
     }
