@@ -19,6 +19,7 @@ import android.text.TextUtils
 import android.text.TextWatcher
 import android.util.Log
 import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -45,6 +46,10 @@ class MainActivity : AppCompatActivity() {
     private var pendingCallNumber: String? = null
     private var pendingWhatsAppContact: String? = null
     private var pendingWhatsAppMessage: String? = null
+    private lateinit var diagnosticLogger: DiagnosticLogger
+    private lateinit var conversationContext: ConversationContext
+    private lateinit var voiceUIController: VoiceUIController
+    private lateinit var voiceController: VoiceController
 
     private val dashboardHandler = Handler(Looper.getMainLooper())
     private val dashboardRefresh = object : Runnable {
@@ -82,6 +87,7 @@ class MainActivity : AppCompatActivity() {
 
         // Setup WindowInsets handling for keyboard (IME) positioning
         setupWindowInsets()
+        initializeVoice()
 
         setupTextInput()
         setupClickListeners()
@@ -90,6 +96,42 @@ class MainActivity : AppCompatActivity() {
         setupDashboardControls()
     }
 
+
+
+    private fun initializeVoice() {
+        diagnosticLogger = DiagnosticLogger(this)
+        conversationContext = ConversationContext()
+        val parser = IntentParser(conversationContext)
+        voiceUIController = VoiceUIController(this, binding.micButton, binding.statusText, binding.commandText, binding.commandInput)
+        voiceController = VoiceController(
+            activity = this, uiController = voiceUIController, intentParser = parser,
+            onIntentParsed = { intent ->
+                when (intent) {
+                    is IntentParser.Intent.OpenApp -> extractAppName(intent.appName)?.let { openApp(it) }
+                    is IntentParser.Intent.CallContact -> extractContactName(intent.contactName)?.let { resolveAndCall(it) }
+                    is IntentParser.Intent.WhatsAppMessage -> extractContactAndMessage(intent.contactName)?.let { (contact, message) -> resolveAndSendWhatsApp(contact, message) }
+                    is IntentParser.Intent.SearchWeb -> extractSearchQuery(intent.query)?.let { searchWeb(it) }
+                    is IntentParser.Intent.Help -> showHelp(intent.topic ?: "")
+                    IntentParser.Intent.StopSpeaking -> voiceController.stopSpeaking()
+                    IntentParser.Intent.RepeatLast -> showError("Repeat is not available.")
+                    is IntentParser.Intent.Unknown -> searchWeb(intent.originalText)
+                }
+            },
+            onTextRecognized = { },
+            onResultReady = { message -> binding.commandText.text = message },
+            onError = { message -> showError(message) },
+            diagnosticLogger = diagnosticLogger
+        )
+        lifecycle.addObserver(voiceController)
+        binding.micButton.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> { voiceController.startVoiceInput(); true }
+                MotionEvent.ACTION_UP -> { voiceController.stopVoiceInput(); true }
+                MotionEvent.ACTION_CANCEL -> { voiceController.cancelVoiceInput(); true }
+                else -> false
+            }
+        }
+    }
 
     private fun startDashboard() {
         dashboardHandler.post(dashboardRefresh)
@@ -474,6 +516,7 @@ class MainActivity : AppCompatActivity() {
         // Display result centered in commandText (replaces temporary status)
         binding.commandText.text = message
         binding.commandText.visibility = View.VISIBLE
+        if (::voiceController.isInitialized) voiceController.reportVoiceResult(message)
         // No Toast - result is shown in the conversation area
     }
 
@@ -483,6 +526,7 @@ class MainActivity : AppCompatActivity() {
         binding.commandText.visibility = View.VISIBLE
         // Also show as Toast for immediate visibility of errors
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+        if (::voiceController.isInitialized) voiceController.reportVoiceResult(message)
     }
 
     private fun extractAppName(command: String): String? {
@@ -786,6 +830,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (::voiceController.isInitialized) voiceController.onRequestPermissionsResult(requestCode, grantResults)
         when (requestCode) {
             CALL_PERMISSION_REQUEST_CODE -> {
                 if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
