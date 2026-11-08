@@ -80,7 +80,7 @@ object DashboardData {
     }
 
     fun fetchNews(): List<NewsItem> {
-        val connection = (URL("https://feeds.bbci.co.uk/news/world/rss.xml").openConnection() as HttpURLConnection).apply {
+        val connection = (URL("https://feeds.bbci.co.uk/news/world/asia/india/rss.xml").openConnection() as HttpURLConnection).apply {
             connectTimeout = 8000
             readTimeout = 8000
             setRequestProperty("User-Agent", "BuddyAndroid/1.0")
