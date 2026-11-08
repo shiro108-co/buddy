@@ -368,7 +368,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkPermissions() {
-        val missingPermissions = permissions.filter {
+        val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) permissions + android.Manifest.permission.BLUETOOTH_CONNECT else permissions
+        val missingPermissions = requiredPermissions.filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }
         if (missingPermissions.isNotEmpty()) {
