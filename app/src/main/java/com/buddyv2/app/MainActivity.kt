@@ -100,7 +100,7 @@ class MainActivity : AppCompatActivity() {
                     binding.newsText.text = if (headlines.isEmpty()) {
                         "News unavailable. Check your internet connection."
                     } else {
-                        headlines.mapIndexed { index, item -> "${index + 1}. ${item.title}" }.joinToString("\\n\\n")
+                        headlines.mapIndexed { index, item -> "${index + 1}. ${item.title}" }.joinToString("\n\n")
                     }
                 }
             }
@@ -157,7 +157,7 @@ class MainActivity : AppCompatActivity() {
                         "BLUETOOTH  ${data.bluetooth}",
                         "VOLUME        ${data.volume}",
                         "BRIGHTNESS  ${data.brightness}"
-                    ).joinToString("\\n")
+                    ).joinToString("\n")
                 }
             }
         }.start()
