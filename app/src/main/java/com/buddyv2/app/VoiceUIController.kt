@@ -35,7 +35,7 @@ class VoiceUIController(
             }
             VoiceState.LISTENING -> {
                 micButton.setImageResource(android.R.drawable.ic_media_pause)
-                micButton.setColorFilter(ContextCompat.getColor(context, R.color.listening_red))
+                micButton.setColorFilter(ContextCompat.getColor(context, R.color.error))
                 statusText.text = "Listening…"
                 commandInput.hint = "Release to process"
                 animator = ObjectAnimator.ofFloat(micButton, "scaleX", 1f, 1.15f).apply {
@@ -44,7 +44,7 @@ class VoiceUIController(
             }
             VoiceState.PROCESSING -> {
                 micButton.setImageResource(android.R.drawable.ic_menu_rotate)
-                micButton.setColorFilter(ContextCompat.getColor(context, R.color.processing_blue))
+                micButton.setColorFilter(ContextCompat.getColor(context, R.color.primary))
                 statusText.text = "Processing…"
                 animator = ObjectAnimator.ofFloat(micButton, "rotation", 0f, 360f).apply {
                     duration = 900; repeatCount = ValueAnimator.INFINITE; start()
@@ -52,7 +52,7 @@ class VoiceUIController(
             }
             VoiceState.SPEAKING -> {
                 micButton.setImageResource(android.R.drawable.ic_media_play)
-                micButton.setColorFilter(ContextCompat.getColor(context, R.color.speaking_green))
+                micButton.setColorFilter(ContextCompat.getColor(context, R.color.accent))
                 statusText.text = "Speaking…"
             }
         }
