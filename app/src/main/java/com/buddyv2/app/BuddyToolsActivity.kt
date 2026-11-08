@@ -87,8 +87,19 @@ class BuddyToolsActivity : AppCompatActivity() {
         store.aliases().forEach { (a,c) -> button("Run /$a") { runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(c))) }.onFailure { startActivity(Intent(Intent.ACTION_WEB_SEARCH).putExtra(android.app.SearchManager.QUERY, c)) } } }
         section("Phone intelligence")
         val stat = android.os.StatFs(android.os.Environment.getDataDirectory().path)
-        val total = stat.totalBytes / 1_073_741_824.0; val free = stat.availableBytes / 1_073_741_824.0
-        text("Device: ${Build.MANUFACTURER} ${Build.MODEL}\nAndroid: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})\nStorage: ${"%.1f".format(total-free)} / ${"%.1f".format(total)} GB used\nApp version: ${packageManager.getPackageInfo(packageName,0).versionName}", 14)
+        val total = stat.totalBytes / 1_073_741_824.0
+        val free = stat.availableBytes / 1_073_741_824.0
+        val battery = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val batteryPct = battery?.let { it.getIntExtra(BatteryManager.EXTRA_LEVEL, 0) * 100 / it.getIntExtra(BatteryManager.EXTRA_SCALE, 100).coerceAtLeast(1) } ?: -1
+        val cm = getSystemService(CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val net = cm.activeNetwork?.let { cm.getNetworkCapabilities(it) }
+        val network = when {
+            net == null -> "Offline"
+            net.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) -> "Wi-Fi"
+            net.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) -> "Mobile data"
+            else -> "Connected"
+        }
+        text("Device: ${Build.MANUFACTURER} ${Build.MODEL}\\nAndroid: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})\\nBattery: ${if (batteryPct >= 0) "$batteryPct%" else "Unavailable"}\\nNetwork: $network\\nStorage: ${"%.1f".format(total-free)} / ${"%.1f".format(total)} GB used\\nApp version: ${packageManager.getPackageInfo(packageName,0).versionName}", 14)
         section("Accessibility")
         button("Read latest local history aloud") { val items=store.history().take(5); tts?.speak(if(items.isEmpty()) "No history yet" else items.joinToString(". "), TextToSpeech.QUEUE_FLUSH, null, "buddy-history") }
         button("Stop speech") { tts?.stop() }
