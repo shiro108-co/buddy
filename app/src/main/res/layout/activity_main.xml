@@ -167,6 +167,13 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:text="Brightness control may ask for Modify System Settings access."
+                android:textColor="@color/secondary_text"
+                android:textSize="11sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:layout_marginTop="14dp"
                 android:text="LATEST NEWS"
                 android:textColor="@color/primary"
