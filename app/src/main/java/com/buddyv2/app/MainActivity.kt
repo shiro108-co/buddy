@@ -50,7 +50,7 @@ class MainActivity : AppCompatActivity() {
     private val dashboardRefresh = object : Runnable {
         override fun run() {
             refreshDashboard()
-            dashboardHandler.postDelayed(this, 15_000)
+            dashboardHandler.postDelayed(this, 1_000)
         }
     }
 
@@ -114,7 +114,10 @@ class MainActivity : AppCompatActivity() {
         binding.volumeControl.progress = audio.getStreamVolume(AudioManager.STREAM_MUSIC) * 100 / maxVolume
         binding.volumeControl.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                if (fromUser) audio.setStreamVolume(AudioManager.STREAM_MUSIC, progress * maxVolume / 100, 0)
+                if (fromUser) {
+                    audio.setStreamVolume(AudioManager.STREAM_MUSIC, progress * maxVolume / 100, 0)
+                    binding.deviceStatusText.text = binding.deviceStatusText.text.toString().replace(Regex("VOLUME\\s+[^\\n]+"), "VOLUME        $progress%")
+                }
             }
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
@@ -124,7 +127,9 @@ class MainActivity : AppCompatActivity() {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 if (!fromUser) return
                 if (!Settings.System.canWrite(this@MainActivity)) {
-                    startActivity(Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:$packageName")))
+                    runCatching { startActivity(Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:$packageName"))) }
+                        .onFailure { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))) }
+                    Toast.makeText(this@MainActivity, "Enable Modify system settings for Buddy, then return here.", Toast.LENGTH_LONG).show()
                     return
                 }
                 Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS_MODE,
@@ -142,6 +147,7 @@ class MainActivity : AppCompatActivity() {
         val audio = getSystemService(AUDIO_SERVICE) as AudioManager
         val maxVolume = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
         if (!binding.volumeControl.isPressed) binding.volumeControl.progress = audio.getStreamVolume(AudioManager.STREAM_MUSIC) * 100 / maxVolume
+        binding.brightnessControl.isEnabled = Settings.System.canWrite(this)
         if (!binding.brightnessControl.isPressed) binding.brightnessControl.progress = runCatching {
             Settings.System.getInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS)
         }.getOrDefault(128)
