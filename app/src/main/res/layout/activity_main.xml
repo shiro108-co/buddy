@@ -219,6 +219,16 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
 
+        <ImageButton
+            android:id="@+id/micButton"
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            android:background="@drawable/circle_bg"
+            android:contentDescription="Hold to speak"
+            android:padding="11dp"
+            android:scaleType="centerInside"
+            android:src="@android:drawable/ic_btn_speak_now" />
+
         <EditText
             android:id="@+id/commandInput"
             android:layout_width="0dp"
