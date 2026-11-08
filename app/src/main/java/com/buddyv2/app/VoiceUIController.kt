@@ -29,15 +29,15 @@ class VoiceUIController(
             VoiceState.IDLE -> {
                 micButton.setImageResource(android.R.drawable.ic_btn_speak_now)
                 micButton.setColorFilter(ContextCompat.getColor(context, R.color.primary))
-                micButton.contentDescription = context.getString(R.string.voice_start_listening)
-                statusText.text = context.getString(R.string.hold_to_speak)
+                micButton.contentDescription = "Hold to speak"
+                statusText.text = "Hold to speak"
                 commandInput.hint = context.getString(R.string.type_command_hint)
             }
             VoiceState.LISTENING -> {
                 micButton.setImageResource(android.R.drawable.ic_media_pause)
                 micButton.setColorFilter(ContextCompat.getColor(context, R.color.listening_red))
-                statusText.text = context.getString(R.string.listening_indicator)
-                commandInput.hint = context.getString(R.string.speaking_hint)
+                statusText.text = "Listening…"
+                commandInput.hint = "Release to process"
                 animator = ObjectAnimator.ofFloat(micButton, "scaleX", 1f, 1.15f).apply {
                     duration = 650; repeatCount = ValueAnimator.INFINITE; repeatMode = ValueAnimator.REVERSE; start()
                 }
@@ -45,7 +45,7 @@ class VoiceUIController(
             VoiceState.PROCESSING -> {
                 micButton.setImageResource(android.R.drawable.ic_menu_rotate)
                 micButton.setColorFilter(ContextCompat.getColor(context, R.color.processing_blue))
-                statusText.text = context.getString(R.string.processing_indicator)
+                statusText.text = "Processing…"
                 animator = ObjectAnimator.ofFloat(micButton, "rotation", 0f, 360f).apply {
                     duration = 900; repeatCount = ValueAnimator.INFINITE; start()
                 }
@@ -53,7 +53,7 @@ class VoiceUIController(
             VoiceState.SPEAKING -> {
                 micButton.setImageResource(android.R.drawable.ic_media_play)
                 micButton.setColorFilter(ContextCompat.getColor(context, R.color.speaking_green))
-                statusText.text = context.getString(R.string.speaking_indicator)
+                statusText.text = "Speaking…"
             }
         }
     }
