@@ -135,6 +135,38 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="VOLUME"
+                android:textColor="@color/secondary_text"
+                android:textSize="12sp" />
+
+            <SeekBar
+                android:id="@+id/volumeControl"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:max="100"
+                android:progressTint="@color/primary"
+                android:thumbTint="@color/primary" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="BRIGHTNESS"
+                android:textColor="@color/secondary_text"
+                android:textSize="12sp" />
+
+            <SeekBar
+                android:id="@+id/brightnessControl"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:max="255"
+                android:progressTint="@color/primary"
+                android:thumbTint="@color/primary" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:layout_marginTop="14dp"
                 android:text="LATEST NEWS"
                 android:textColor="@color/primary"
