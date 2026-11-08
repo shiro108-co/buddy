@@ -94,6 +94,7 @@ class MainActivity : AppCompatActivity() {
         checkPermissions()
         startDashboard()
         setupDashboardControls()
+        setupToolsEntry()
     }
 
 
@@ -147,6 +148,23 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }.start()
+    }
+
+    private fun setupToolsEntry() {
+        val button = android.widget.Button(this).apply {
+            text = "TOOLS"
+            contentDescription = "Open Buddy tools, reminders, local history and privacy settings"
+            setOnClickListener { startActivity(Intent(this@MainActivity, BuddyToolsActivity::class.java)) }
+        }
+        val params = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
+        ).apply {
+            endToEnd = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+            topToTop = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+            marginEnd = (12 * resources.displayMetrics.density).toInt()
+            topMargin = (8 * resources.displayMetrics.density).toInt()
+        }
+        binding.root.addView(button, params)
     }
 
     private fun setupDashboardControls() {
@@ -435,6 +453,9 @@ class MainActivity : AppCompatActivity() {
         val input = binding.commandInput.text.toString()
         val trimmed = input.trim()
         if (trimmed.isEmpty()) return
+
+        // Persist a local-only command history
+        BuddyLocalStore(this).log(trimmed)
 
         // Dismiss autocomplete if showing
         deactivateSlashTrigger()
