@@ -11,6 +11,8 @@ import android.net.NetworkCapabilities
 import android.os.BatteryManager
 import android.os.Environment
 import android.os.StatFs
+import android.os.Process
+import android.os.SystemClock
 import android.provider.Settings
 import android.util.Xml
 import org.xmlpull.v1.XmlPullParser
@@ -19,6 +21,8 @@ import java.net.URL
 import java.util.Locale
 
 object DashboardData {
+    @Volatile private var lastAppCpuMs = 0L
+    @Volatile private var lastWallMs = 0L
     data class NewsItem(val title: String, val source: String)
     data class Snapshot(val battery: String, val cpu: String, val ram: String, val storage: String,
                         val wifi: String, val bluetooth: String, val volume: String, val brightness: String)
@@ -71,12 +75,26 @@ object DashboardData {
     } catch (_: Exception) { null }
 
     private fun cpuUsage(): String {
-        val first = cpuTimes() ?: return "Unavailable"
+        val first = cpuTimes() ?: return appCpuUsage()
         try { Thread.sleep(250) } catch (_: InterruptedException) { Thread.currentThread().interrupt(); return "Unavailable" }
-        val second = cpuTimes() ?: return "Unavailable"
+        val second = cpuTimes() ?: return appCpuUsage()
         val total = second.second - first.second
         val idle = second.first - first.first
-        return if (total > 0) "${((total - idle) * 100 / total).coerceIn(0, 100)}%" else "Unavailable"
+        return if (total > 0) "${((total - idle) * 100 / total).coerceIn(0, 100)}%" else appCpuUsage()
+    }
+
+    @Synchronized
+    private fun appCpuUsage(): String {
+        val cpu = Process.getElapsedCpuTime()
+        val wall = SystemClock.elapsedRealtime()
+        val cpuDelta = cpu - lastAppCpuMs
+        val wallDelta = wall - lastWallMs
+        lastAppCpuMs = cpu
+        lastWallMs = wall
+        if (wallDelta <= 0L || cpuDelta < 0L) return "Measuring…"
+        val cores = Runtime.getRuntime().availableProcessors().coerceAtLeast(1)
+        val percent = (cpuDelta * 100.0 / (wallDelta * cores)).toInt().coerceIn(0, 100)
+        return "App $percent%"
     }
 
     fun fetchNews(): List<NewsItem> {
