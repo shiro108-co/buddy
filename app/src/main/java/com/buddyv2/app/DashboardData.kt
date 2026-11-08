@@ -67,7 +67,7 @@ object DashboardData {
 
     private fun cpuTimes(): Pair<Long, Long>? = try {
         val values = java.io.File("/proc/stat").bufferedReader().use { it.readLine().trim().split(Regex("\\s+")).drop(1).map(String::toLong) }
-        Pair(values[3] + (values.getOrNull(4) ?: 0L), values.sum())
+        Pair(values[3] + (values.getOrNull(4) ?: 0L), values.take(8).sum())
     } catch (_: Exception) { null }
 
     private fun cpuUsage(): String {
