@@ -108,8 +108,60 @@ class BuddyToolsActivity : AppCompatActivity() {
         button("View recent command history") { val items=store.history(); text(if(items.isEmpty()) "No saved history" else items.joinToString("\n"), 12) }
         button("Delete command history") { store.clearHistory(); toast("History deleted") }
         button("Delete custom shortcuts") { store.clearAliases(); toast("Shortcuts deleted"); recreate() }
+        section("File search")
+        text("Choose a folder or file through Android's system picker. Buddy only sees items you select; no broad storage permission is needed.", 13)
+        button("Browse files") { openFilePicker() }
+        section("Permission dashboard")
+        button("Check permissions") { showPermissionDashboard() }
         button("Open Android app permissions") { startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))) }
         button("Back") { finish() }
+    }
+
+    private fun openFilePicker() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+        }
+        startActivityForResult(intent, 410)
+    }
+
+    @Deprecated("Uses the platform document picker for Android 7 compatibility")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 410 && resultCode == RESULT_OK) {
+            val uri = data?.data ?: return
+            runCatching { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+            val name = contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
+                if (it.moveToFirst()) it.getString(0) else null
+            } ?: uri.lastPathSegment ?: "Selected file"
+            text("Selected: $name\nType: ${contentResolver.getType(uri) ?: "unknown"}", 14)
+            store.log("Selected file: $name")
+        }
+    }
+
+    private fun showPermissionDashboard() {
+        val checks = listOf(
+            "Microphone" to android.Manifest.permission.RECORD_AUDIO,
+            "Contacts" to android.Manifest.permission.READ_CONTACTS,
+            "Phone calls" to android.Manifest.permission.CALL_PHONE,
+            "Notifications" to android.Manifest.permission.POST_NOTIFICATIONS
+        )
+        val lines = checks.map { (label, permission) ->
+            val supported = Build.VERSION.SDK_INT >= 33 || permission != android.Manifest.permission.POST_NOTIFICATIONS
+            val granted = supported && checkSelfPermission(permission) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            "$label: ${if (!supported) "Not applicable" else if (granted) "Allowed" else "Not granted"}"
+        }.toMutableList()
+        lines += "Modify system settings: ${if (Build.VERSION.SDK_INT >= 23 && android.provider.Settings.System.canWrite(this)) "Allowed" else "Not granted"}"
+        lines += "Display over other apps: ${if (Build.VERSION.SDK_INT >= 23 && android.provider.Settings.canDrawOverlays(this)) "Allowed" else "Not granted"}"
+        lines += "Usage access: ${if (Build.VERSION.SDK_INT >= 21 && (getSystemService(APP_OPS_SERVICE) as android.app.AppOpsManager).checkOpNoThrow("android:get_usage_stats", android.os.Process.myUid(), packageName) == android.app.AppOpsManager.MODE_ALLOWED) "Allowed" else "Not granted"}"
+        text(lines.joinToString("\n"), 14)
+        button("Manage all permissions") {
+            startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+        }
+        button("Open special app access") {
+            startActivity(Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+        }
     }
 
     private fun scheduleReminder(message: String, delayMinutes: Long, repeat: Boolean) {
