@@ -8,6 +8,8 @@ import android.content.pm.PackageManager
 import android.database.Cursor
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.Bundle
 import android.provider.ContactsContract
 import android.provider.Settings
@@ -32,6 +34,8 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.buddyv2.app.databinding.ActivityMainBinding
 import java.util.Locale
+import java.util.Date
+import java.text.SimpleDateFormat
 
 class MainActivity : AppCompatActivity() {
 
@@ -39,6 +43,14 @@ class MainActivity : AppCompatActivity() {
     private var pendingCallNumber: String? = null
     private var pendingWhatsAppContact: String? = null
     private var pendingWhatsAppMessage: String? = null
+
+    private val dashboardHandler = Handler(Looper.getMainLooper())
+    private val dashboardRefresh = object : Runnable {
+        override fun run() {
+            refreshDashboard()
+            dashboardHandler.postDelayed(this, 15_000)
+        }
+    }
 
     private val permissions = arrayOf(
         android.Manifest.permission.CALL_PHONE,
@@ -72,6 +84,46 @@ class MainActivity : AppCompatActivity() {
         setupTextInput()
         setupClickListeners()
         checkPermissions()
+        startDashboard()
+    }
+
+
+    private fun startDashboard() {
+        dashboardHandler.post(dashboardRefresh)
+        Thread {
+            val headlines = runCatching { DashboardData.fetchNews() }.getOrDefault(emptyList())
+            runOnUiThread {
+                if (!isFinishing && !isDestroyed) {
+                    binding.newsText.text = if (headlines.isEmpty()) {
+                        "News unavailable. Check your internet connection."
+                    } else {
+                        headlines.mapIndexed { index, item -> "${index + 1}. ${item.title}" }.joinToString("\\n\\n")
+                    }
+                }
+            }
+        }.start()
+    }
+
+    private fun refreshDashboard() {
+        binding.dashboardClock.text = SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date())
+        binding.dashboardDate.text = SimpleDateFormat("EEEE, d MMMM yyyy", Locale.getDefault()).format(Date())
+        Thread {
+            val data = runCatching { DashboardData.snapshot(this) }.getOrNull()
+            runOnUiThread {
+                if (!isFinishing && !isDestroyed && data != null) {
+                    binding.deviceStatusText.text = listOf(
+                        "BATTERY       ${data.battery}",
+                        "CPU              ${data.cpu}",
+                        "RAM              ${data.ram}",
+                        "STORAGE      ${data.storage}",
+                        "WI-FI            ${data.wifi}",
+                        "BLUETOOTH  ${data.bluetooth}",
+                        "VOLUME        ${data.volume}",
+                        "BRIGHTNESS  ${data.brightness}"
+                    ).joinToString("\\n")
+                }
+            }
+        }.start()
     }
 
     private fun setupWindowInsets() {
@@ -716,6 +768,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        dashboardHandler.removeCallbacks(dashboardRefresh)
         autocompletePopup?.dismiss()
         super.onDestroy()
     }
