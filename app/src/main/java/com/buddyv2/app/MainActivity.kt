@@ -152,19 +152,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupToolsEntry() {
         val button = android.widget.Button(this).apply {
-            text = "TOOLS"
+            text = "BUDDY TOOLS"
             contentDescription = "Open Buddy tools, reminders, local history and privacy settings"
             setOnClickListener { startActivity(Intent(this@MainActivity, BuddyToolsActivity::class.java)) }
         }
-        val params = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
-        ).apply {
-            endToEnd = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
-            topToTop = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
-            marginEnd = (12 * resources.displayMetrics.density).toInt()
-            topMargin = (8 * resources.displayMetrics.density).toInt()
-        }
-        binding.root.addView(button, params)
+        (binding.dashboardScroll.getChildAt(0) as? ViewGroup)?.addView(button, 0,
+            ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
     }
 
     private fun setupDashboardControls() {
