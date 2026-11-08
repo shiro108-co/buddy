@@ -138,6 +138,12 @@ class MainActivity : AppCompatActivity() {
     private fun refreshDashboard() {
         binding.dashboardClock.text = SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date())
         binding.dashboardDate.text = SimpleDateFormat("EEEE, d MMMM yyyy", Locale.getDefault()).format(Date())
+        val audio = getSystemService(AUDIO_SERVICE) as AudioManager
+        val maxVolume = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+        if (!binding.volumeControl.isPressed) binding.volumeControl.progress = audio.getStreamVolume(AudioManager.STREAM_MUSIC) * 100 / maxVolume
+        if (!binding.brightnessControl.isPressed) binding.brightnessControl.progress = runCatching {
+            Settings.System.getInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS)
+        }.getOrDefault(128)
         Thread {
             val data = runCatching { DashboardData.snapshot(this) }.getOrNull()
             runOnUiThread {
