@@ -1,28 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="primary">#6200EE</color>
-    <color name="primary_variant">#3700B3</color>
-    <color name="secondary">#03DAC5</color>
-    <color name="secondary_variant">#018786</color>
+    <color name="primary">#28C9FF</color>
+    <color name="primary_variant">#087FAF</color>
+    <color name="secondary">#58D8FF</color>
+    <color name="secondary_variant">#167CA8</color>
     <color name="accent">#25D366</color>
-    <color name="tertiary">#FF5722</color>
-    <color name="background">#FFFFFF</color>
-    <color name="surface">#FFFFFF</color>
-    <color name="surface_variant">#F5F5F5</color>
-    <color name="error">#B00020</color>
-    <color name="primary_text">#212121</color>
-    <color name="secondary_text">#757575</color>
-    <color name="outline">#E0E0E0</color>
-    <color name="on_primary">#FFFFFF</color>
-    <color name="on_secondary">#000000</color>
-    <color name="on_background">#212121</color>
-    <color name="on_surface">#212121</color>
-    <color name="on_error">#FFFFFF</color>
-    <color name="primary_alpha_10">#1A6200EE</color>
-
-    <!-- Command category colors -->
-    <color name="category_apps">#6200EE</color>
+    <color name="tertiary">#FFB454</color>
+    <color name="background">#050A12</color>
+    <color name="surface">#101A27</color>
+    <color name="surface_variant">#101A27</color>
+    <color name="error">#CF6679</color>
+    <color name="primary_text">#EAF5FF</color>
+    <color name="secondary_text">#91A4B8</color>
+    <color name="outline">#26394D</color>
+    <color name="on_primary">#03111A</color>
+    <color name="on_secondary">#00131A</color>
+    <color name="on_background">#EAF5FF</color>
+    <color name="on_surface">#EAF5FF</color>
+    <color name="on_error">#000000</color>
+    <color name="primary_alpha_10">#1A28C9FF</color>
+    <color name="category_apps">#28C9FF</color>
     <color name="category_communication">#25D366</color>
-    <color name="category_search">#FF5722</color>
-    <color name="category_system">#757575</color>
+    <color name="category_search">#FFB454</color>
+    <color name="category_system">#91A4B8</color>
 </resources>

@@ -1,7 +1,7 @@
 <resources>
-    <string name="app_name">Buddy V2</string>
-    <string name="enter_command">Enter a command</string>
-    <string name="type_command_hint">Type /command (e.g., /open chrome, /call mom, /whatsapp john hello, /search weather, /help)</string>
+    <string name="app_name">Buddy</string>
+    <string name="enter_command">Your assistant is ready</string>
+    <string name="type_command_hint">Ask Buddy or type / for commands</string>
     <string name="send_button_desc">Send command</string>
     <string name="autocomplete_hint">Type / to see available commands</string>
     <string name="permission_contacts_rationale">Contacts permission is required to call or message people by name.</string>

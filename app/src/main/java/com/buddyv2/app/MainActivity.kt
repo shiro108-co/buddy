@@ -7,7 +7,10 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.database.Cursor
 import android.net.Uri
+import android.media.AudioManager
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.Bundle
 import android.provider.ContactsContract
 import android.provider.Settings
@@ -16,12 +19,14 @@ import android.text.TextUtils
 import android.text.TextWatcher
 import android.util.Log
 import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import android.widget.ImageButton
+import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -32,6 +37,8 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.buddyv2.app.databinding.ActivityMainBinding
 import java.util.Locale
+import java.util.Date
+import java.text.SimpleDateFormat
 
 class MainActivity : AppCompatActivity() {
 
@@ -39,6 +46,18 @@ class MainActivity : AppCompatActivity() {
     private var pendingCallNumber: String? = null
     private var pendingWhatsAppContact: String? = null
     private var pendingWhatsAppMessage: String? = null
+    private lateinit var diagnosticLogger: DiagnosticLogger
+    private lateinit var conversationContext: ConversationContext
+    private lateinit var voiceUIController: VoiceUIController
+    private lateinit var voiceController: VoiceController
+
+    private val dashboardHandler = Handler(Looper.getMainLooper())
+    private val dashboardRefresh = object : Runnable {
+        override fun run() {
+            refreshDashboard()
+            dashboardHandler.postDelayed(this, 1_000)
+        }
+    }
 
     private val permissions = arrayOf(
         android.Manifest.permission.CALL_PHONE,
@@ -68,10 +87,129 @@ class MainActivity : AppCompatActivity() {
 
         // Setup WindowInsets handling for keyboard (IME) positioning
         setupWindowInsets()
+        initializeVoice()
 
         setupTextInput()
         setupClickListeners()
         checkPermissions()
+        startDashboard()
+        setupDashboardControls()
+    }
+
+
+
+    private fun initializeVoice() {
+        diagnosticLogger = DiagnosticLogger(this)
+        conversationContext = ConversationContext()
+        val parser = IntentParser(conversationContext)
+        voiceUIController = VoiceUIController(this, binding.micButton, binding.statusText, binding.commandText, binding.commandInput)
+        voiceController = VoiceController(
+            activity = this, uiController = voiceUIController, intentParser = parser,
+            onIntentParsed = { intent ->
+                when (intent) {
+                    is IntentParser.Intent.OpenApp -> extractAppName(intent.appName)?.let { openApp(it) }
+                    is IntentParser.Intent.CallContact -> extractContactName(intent.contactName)?.let { resolveAndCall(it) }
+                    is IntentParser.Intent.WhatsAppMessage -> extractContactAndMessage(intent.contactName)?.let { (contact, message) -> resolveAndSendWhatsApp(contact, message) }
+                    is IntentParser.Intent.SearchWeb -> extractSearchQuery(intent.query)?.let { searchWeb(it) }
+                    is IntentParser.Intent.Help -> showHelp(intent.topic ?: "")
+                    IntentParser.Intent.StopSpeaking -> voiceController.stopSpeaking()
+                    IntentParser.Intent.RepeatLast -> showError("Repeat is not available.")
+                    is IntentParser.Intent.Unknown -> searchWeb(intent.originalText)
+                }
+            },
+            onTextRecognized = { },
+            onResultReady = { message -> binding.commandText.text = message },
+            onError = { message -> showError(message) },
+            diagnosticLogger = diagnosticLogger
+        )
+        lifecycle.addObserver(voiceController)
+        binding.micButton.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> { voiceController.startVoiceInput(); true }
+                MotionEvent.ACTION_UP -> { voiceController.stopVoiceInput(); true }
+                MotionEvent.ACTION_CANCEL -> { voiceController.cancelVoiceInput(); true }
+                else -> false
+            }
+        }
+    }
+
+    private fun startDashboard() {
+        dashboardHandler.post(dashboardRefresh)
+        Thread {
+            val headlines = runCatching { DashboardData.fetchNews() }.getOrDefault(emptyList())
+            runOnUiThread {
+                if (!isFinishing && !isDestroyed) {
+                    binding.newsText.text = if (headlines.isEmpty()) {
+                        "News unavailable. Check your internet connection."
+                    } else {
+                        headlines.mapIndexed { index, item -> "${index + 1}. ${item.title}" }.joinToString("\n\n")
+                    }
+                }
+            }
+        }.start()
+    }
+
+    private fun setupDashboardControls() {
+        val audio = getSystemService(AUDIO_SERVICE) as AudioManager
+        val maxVolume = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+        binding.volumeControl.max = 100
+        binding.volumeControl.progress = audio.getStreamVolume(AudioManager.STREAM_MUSIC) * 100 / maxVolume
+        binding.volumeControl.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (fromUser) {
+                    audio.setStreamVolume(AudioManager.STREAM_MUSIC, progress * maxVolume / 100, 0)
+                    binding.deviceStatusText.text = binding.deviceStatusText.text.toString().replace(Regex("VOLUME\\s+[^\\n]+"), "VOLUME        $progress%")
+                }
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+        binding.brightnessControl.isEnabled = true
+        binding.brightnessControl.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (!fromUser) return
+                if (!Settings.System.canWrite(this@MainActivity)) {
+                    runCatching { startActivity(Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:$packageName"))) }
+                        .onFailure { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))) }
+                    Toast.makeText(this@MainActivity, "Enable Modify system settings for Buddy, then return here.", Toast.LENGTH_LONG).show()
+                    return
+                }
+                Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS_MODE,
+                    Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL)
+                Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, progress.coerceIn(1, 255))
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+    }
+
+    private fun refreshDashboard() {
+        binding.dashboardClock.text = SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date())
+        binding.dashboardDate.text = SimpleDateFormat("EEEE, d MMMM yyyy", Locale.getDefault()).format(Date())
+        val audio = getSystemService(AUDIO_SERVICE) as AudioManager
+        val maxVolume = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+        if (!binding.volumeControl.isPressed) binding.volumeControl.progress = audio.getStreamVolume(AudioManager.STREAM_MUSIC) * 100 / maxVolume
+        binding.brightnessControl.isEnabled = Settings.System.canWrite(this)
+        if (!binding.brightnessControl.isPressed) binding.brightnessControl.progress = runCatching {
+            Settings.System.getInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS)
+        }.getOrDefault(128)
+        Thread {
+            val data = runCatching { DashboardData.snapshot(this) }.getOrNull()
+            runOnUiThread {
+                if (!isFinishing && !isDestroyed && data != null) {
+                    binding.deviceStatusText.text = listOf(
+                        "BATTERY       ${data.battery}",
+                        "CPU              ${data.cpu}",
+                        "RAM              ${data.ram}",
+                        "STORAGE      ${data.storage}",
+                        "WI-FI            ${data.wifi}",
+                        "BLUETOOTH  ${data.bluetooth}",
+                        "VOLUME        ${data.volume}",
+                        "BRIGHTNESS  ${data.brightness}"
+                    ).joinToString("\n")
+                }
+            }
+        }.start()
     }
 
     private fun setupWindowInsets() {
@@ -278,7 +416,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkPermissions() {
-        val missingPermissions = permissions.filter {
+        val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) permissions + android.Manifest.permission.BLUETOOTH_CONNECT else permissions
+        val missingPermissions = requiredPermissions.filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }
         if (missingPermissions.isNotEmpty()) {
@@ -377,6 +516,7 @@ class MainActivity : AppCompatActivity() {
         // Display result centered in commandText (replaces temporary status)
         binding.commandText.text = message
         binding.commandText.visibility = View.VISIBLE
+        if (::voiceController.isInitialized) voiceController.reportVoiceResult(message)
         // No Toast - result is shown in the conversation area
     }
 
@@ -386,6 +526,7 @@ class MainActivity : AppCompatActivity() {
         binding.commandText.visibility = View.VISIBLE
         // Also show as Toast for immediate visibility of errors
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+        if (::voiceController.isInitialized) voiceController.reportVoiceResult(message)
     }
 
     private fun extractAppName(command: String): String? {
@@ -689,6 +830,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (::voiceController.isInitialized) voiceController.onRequestPermissionsResult(requestCode, grantResults)
         when (requestCode) {
             CALL_PERMISSION_REQUEST_CODE -> {
                 if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
@@ -715,7 +857,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        refreshDashboard()
+    }
+
     override fun onDestroy() {
+        dashboardHandler.removeCallbacks(dashboardRefresh)
         autocompletePopup?.dismiss()
         super.onDestroy()
     }
