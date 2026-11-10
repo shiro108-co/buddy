@@ -101,7 +101,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun initializeVoice() {
         diagnosticLogger = DiagnosticLogger(this)
-        conversationContext = ConversationContext()
+        conversationContext = ConversationContext(this)
         val parser = IntentParser(conversationContext)
         voiceUIController = VoiceUIController(this, binding.micButton, binding.statusText, binding.commandText, binding.commandInput)
         voiceController = VoiceController(
