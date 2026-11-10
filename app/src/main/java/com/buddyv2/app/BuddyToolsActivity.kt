@@ -15,12 +15,30 @@ import androidx.core.app.NotificationCompat
 import java.net.URLEncoder
 import java.util.Locale
 
-class BuddyLocalStore(context: Context) : SQLiteOpenHelper(context, "buddy_local.db", null, 1) {
+class BuddyLocalStore(context: Context) : SQLiteOpenHelper(context, "buddy_local.db", null, 2) {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("CREATE TABLE history(id INTEGER PRIMARY KEY AUTOINCREMENT, command TEXT NOT NULL, created INTEGER NOT NULL)")
-        db.execSQL("CREATE TABLE aliases(name TEXT PRIMARY KEY, command TEXT NOT NULL)")
+        db.execSQL("CREATE TABLE aliases(name TEXT PRIMARY KEY, command TEXT NOT NULL)")\n        db.execSQL("CREATE TABLE documents(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, content TEXT NOT NULL, indexed INTEGER NOT NULL)")
     }
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {}
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        if (oldVersion < 2) db.execSQL("CREATE TABLE IF NOT EXISTS documents(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, content TEXT NOT NULL, indexed INTEGER NOT NULL)")
+    }
+    fun indexDocument(name: String, content: String) {
+        writableDatabase.execSQL("INSERT INTO documents(name,content,indexed) VALUES(?,?,?)", arrayOf(name, content, System.currentTimeMillis()))
+    }
+    fun searchDocuments(query: String): List<String> {
+        val needle = "%${query.replace("%", "\\%").replace("_", "\\_")}%"
+        return readableDatabase.rawQuery("SELECT name,content FROM documents WHERE content LIKE ? ESCAPE '\\\\' ORDER BY indexed DESC LIMIT 20", arrayOf(needle)).use { c ->
+            buildList {
+                while (c.moveToNext()) {
+                    val name = c.getString(0)
+                    val content = c.getString(1)
+                    val line = content.lineSequence().firstOrNull { it.contains(query, ignoreCase = true) } ?: content.take(180)
+                    add("$name: ${line.trim().take(240)}")
+                }
+            }
+        }
+    }
     fun log(command: String) { writableDatabase.execSQL("INSERT INTO history(command,created) VALUES(?,?)", arrayOf(command, System.currentTimeMillis())) }
     fun history(): List<String> = readableDatabase.rawQuery("SELECT command,datetime(created/1000,'unixepoch','localtime') FROM history ORDER BY id DESC LIMIT 100", null).use { c ->
         buildList { while (c.moveToNext()) add("${c.getString(1)}  •  ${c.getString(0)}") }
@@ -110,7 +128,18 @@ class BuddyToolsActivity : AppCompatActivity() {
         button("Delete custom shortcuts") { store.clearAliases(); toast("Shortcuts deleted"); recreate() }
         section("File search")
         text("Choose a folder or file through Android's system picker. Buddy only sees items you select; no broad storage permission is needed.", 13)
-        button("Browse files") { openFilePicker() }
+        button("Choose text file to index") { openFilePicker() }
+        val fileQuery = EditText(this).apply { hint = "Search indexed documents"; setTextColor(-1); setHintTextColor(0xFF999999.toInt()) }
+        root.addView(fileQuery, match())
+        button("Search my selected files") {
+            val q = fileQuery.text.toString().trim()
+            if (q.isBlank()) toast("Enter a search phrase")
+            else {
+                val matches = store.searchDocuments(q)
+                text(if (matches.isEmpty()) "No matches in indexed files" else matches.joinToString("\\n\\n"), 13)
+            }
+        }
+        text("Text files only (TXT, MD, CSV, JSON, XML and similar). Selected content is indexed locally; PDFs and office documents are not parsed.", 12)
         section("Permission dashboard")
         button("Check permissions") { showPermissionDashboard() }
         button("Open Android app permissions") { startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))) }
@@ -120,7 +149,7 @@ class BuddyToolsActivity : AppCompatActivity() {
     private fun openFilePicker() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
-            type = "*/*"
+            type = "text/*"
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
         }
         startActivityForResult(intent, 410)
