@@ -165,7 +165,29 @@ class BuddyToolsActivity : AppCompatActivity() {
             val name = contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
                 if (it.moveToFirst()) it.getString(0) else null
             } ?: uri.lastPathSegment ?: "Selected file"
-            text("Selected: $name\nType: ${contentResolver.getType(uri) ?: "unknown"}", 14)
+            val mime = contentResolver.getType(uri) ?: ""
+            val indexed = runCatching {
+                require(mime.startsWith("text/") || name.endsWith(".md", true) || name.endsWith(".csv", true) || name.endsWith(".json", true) || name.endsWith(".xml", true) || name.endsWith(".log", true)) { "Choose a plain-text document" }
+                val bytes = contentResolver.openInputStream(uri)?.use { input ->
+                    val output = java.io.ByteArrayOutputStream()
+                    val buffer = ByteArray(8192)
+                    var total = 0
+                    while (true) {
+                        val count = input.read(buffer)
+                        if (count < 0) break
+                        total += count
+                        require(total <= 1_048_576) { "File exceeds 1 MB limit" }
+                        output.write(buffer, 0, count)
+                    }
+                    output.toByteArray()
+                } ?: error("Unable to read selected file")
+                val content = bytes.toString(Charsets.UTF_8)
+                require(content.isNotBlank()) { "Selected file is empty" }
+                store.indexDocument(name, content)
+                content.length
+            }
+            if (indexed.isSuccess) text("Indexed locally: $name (${indexed.getOrThrow()} characters)", 14)
+            else text("Could not index $name: ${indexed.exceptionOrNull()?.message ?: "unsupported file"}", 13)
             store.log("Selected file: $name")
         }
     }
