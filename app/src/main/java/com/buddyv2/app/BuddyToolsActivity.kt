@@ -18,7 +18,8 @@ import java.util.Locale
 class BuddyLocalStore(context: Context) : SQLiteOpenHelper(context, "buddy_local.db", null, 2) {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("CREATE TABLE history(id INTEGER PRIMARY KEY AUTOINCREMENT, command TEXT NOT NULL, created INTEGER NOT NULL)")
-        db.execSQL("CREATE TABLE aliases(name TEXT PRIMARY KEY, command TEXT NOT NULL)")\n        db.execSQL("CREATE TABLE documents(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, content TEXT NOT NULL, indexed INTEGER NOT NULL)")
+        db.execSQL("CREATE TABLE aliases(name TEXT PRIMARY KEY, command TEXT NOT NULL)" )
+        db.execSQL("CREATE TABLE documents(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, content TEXT NOT NULL, indexed INTEGER NOT NULL)")
     }
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion < 2) db.execSQL("CREATE TABLE IF NOT EXISTS documents(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, content TEXT NOT NULL, indexed INTEGER NOT NULL)")
@@ -27,8 +28,8 @@ class BuddyLocalStore(context: Context) : SQLiteOpenHelper(context, "buddy_local
         writableDatabase.execSQL("INSERT INTO documents(name,content,indexed) VALUES(?,?,?)", arrayOf(name, content, System.currentTimeMillis()))
     }
     fun searchDocuments(query: String): List<String> {
-        val needle = "%${query.replace("%", "\\%").replace("_", "\\_")}%"
-        return readableDatabase.rawQuery("SELECT name,content FROM documents WHERE content LIKE ? ESCAPE '\\\\' ORDER BY indexed DESC LIMIT 20", arrayOf(needle)).use { c ->
+        val needle = "%$query%"
+        return readableDatabase.rawQuery("SELECT name,content FROM documents WHERE content LIKE ? ORDER BY indexed DESC LIMIT 20", arrayOf(needle)).use { c ->
             buildList {
                 while (c.moveToNext()) {
                     val name = c.getString(0)
