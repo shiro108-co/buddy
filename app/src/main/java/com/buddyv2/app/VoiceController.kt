@@ -97,6 +97,7 @@ class VoiceController(
     override fun onResults(finalText: String) {
         uiController.setState(VoiceUIController.VoiceState.PROCESSING)
         voiceActionPending = true
+        onTextRecognized(finalText)
         onIntentParsed(intentParser.parse(finalText))
     }
     override fun onEndOfSpeech() {}
