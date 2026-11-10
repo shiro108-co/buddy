@@ -137,7 +137,7 @@ class BuddyToolsActivity : AppCompatActivity() {
             if (q.isBlank()) toast("Enter a search phrase")
             else {
                 val matches = store.searchDocuments(q)
-                text(if (matches.isEmpty()) "No matches in indexed files" else matches.joinToString("\\n\\n"), 13)
+                text(if (matches.isEmpty()) "No matches in indexed files" else matches.joinToString("\n\n"), 13)
             }
         }
         text("Text files only (TXT, MD, CSV, JSON, XML and similar). Selected content is indexed locally; PDFs and office documents are not parsed.", 12)
