@@ -1,78 +1,79 @@
 package com.buddyv2.app
 
+import android.content.Context
 import android.util.Log
+import org.json.JSONArray
+import org.json.JSONObject
 
-/**
- * Maintains conversational context for multi-turn voice interactions.
- * Stores recent exchanges to enable follow-up understanding.
- */
-class ConversationContext {
-
+/** Persistent, private conversation context stored only in this app's SharedPreferences. */
+class ConversationContext(context: Context) {
     companion object {
         private const val TAG = "ConversationContext"
         private const val MAX_HISTORY = 10
+        private const val PREFS = "buddy_conversation"
     }
 
-    data class Exchange(
-        val userInput: String,
-        val buddyResponse: String,
-        val timestamp: Long = System.currentTimeMillis()
-    )
+    data class Exchange(val userInput: String, val buddyResponse: String, val timestamp: Long = System.currentTimeMillis())
 
+    private val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
     private val history = mutableListOf<Exchange>()
     private var lastMatchedContact: String? = null
     private var lastAction: String? = null
 
-    fun addExchange(userInput: String, buddyResponse: String) {
+    init {
+        runCatching {
+            val saved = JSONArray(prefs.getString("history", "[]"))
+            for (i in 0 until saved.length()) {
+                val item = saved.getJSONObject(i)
+                history.add(Exchange(item.optString("user"), item.optString("response"), item.optLong("time")))
+            }
+            lastMatchedContact = prefs.getString("last_contact", null)
+            lastAction = prefs.getString("last_action", null)
+        }.onFailure { Log.w(TAG, "Could not restore conversation context", it) }
+    }
+
+    @Synchronized fun addExchange(userInput: String, buddyResponse: String) {
         history.add(Exchange(userInput, buddyResponse))
-        if (history.size > MAX_HISTORY) {
-            history.removeAt(0)
-        }
-        Log.d(TAG, "Added exchange. History size: ${history.size}")
+        while (history.size > MAX_HISTORY) history.removeAt(0)
+        persist()
     }
 
-    fun getRecentExchanges(count: Int): List<Exchange> {
-        return history.takeLast(count)
-    }
+    @Synchronized fun getRecentExchanges(count: Int): List<Exchange> = history.takeLast(count.coerceAtLeast(0))
+    @Synchronized fun getAllHistory(): List<Exchange> = history.toList()
 
-    fun getAllHistory(): List<Exchange> {
-        return history.toList()
-    }
-
-    fun clear() {
+    @Synchronized fun clear() {
         history.clear()
         lastMatchedContact = null
         lastAction = null
-        Log.d(TAG, "Conversation context cleared")
+        prefs.edit().remove("history").remove("last_contact").remove("last_action").apply()
     }
 
-    fun setLastMatchedContact(contactName: String?) {
+    @Synchronized fun setLastMatchedContact(contactName: String?) {
         lastMatchedContact = contactName
+        prefs.edit().putString("last_contact", contactName).apply()
     }
+    @Synchronized fun getLastMatchedContact(): String? = lastMatchedContact
 
-    fun getLastMatchedContact(): String? {
-        return lastMatchedContact
-    }
-
-    fun setLastAction(action: String?) {
+    @Synchronized fun setLastAction(action: String?) {
         lastAction = action
+        prefs.edit().putString("last_action", action).apply()
     }
+    @Synchronized fun getLastAction(): String? = lastAction
 
-    fun getLastAction(): String? {
-        return lastAction
-    }
-
-    /**
-     * Builds a context string for the intent parser to understand follow-ups.
-     */
-    fun buildContextSummary(): String {
+    @Synchronized fun buildContextSummary(): String {
         if (history.isEmpty()) return ""
-
-        val sb = StringBuilder("Recent conversation:\n")
-        for (exchange in history.takeLast(5)) {
-            sb.append("User: ${exchange.userInput}\n")
-            sb.append("Buddy: ${exchange.buddyResponse}\n")
+        return buildString {
+            append("Recent conversation:\n")
+            history.takeLast(5).forEach {
+                append("User: ${it.userInput}\nBuddy: ${it.buddyResponse}\n")
+            }
         }
-        return sb.toString()
+    }
+
+    private fun persist() {
+        val json = JSONArray()
+        history.forEach { json.put(JSONObject().put("user", it.userInput).put("response", it.buddyResponse).put("time", it.timestamp)) }
+        prefs.edit().putString("history", json.toString()).apply()
+        Log.d(TAG, "Saved conversation context (${history.size} exchanges)")
     }
 }
