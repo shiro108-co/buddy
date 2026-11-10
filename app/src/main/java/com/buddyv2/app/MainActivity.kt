@@ -49,7 +49,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var diagnosticLogger: DiagnosticLogger
     private lateinit var conversationContext: ConversationContext
     private lateinit var voiceUIController: VoiceUIController
-    private lateinit var voiceController: VoiceController\n    private var lastUserInput: String? = null
+    private lateinit var voiceController: VoiceController
+    private var lastUserInput: String? = null
 
     private val dashboardHandler = Handler(Looper.getMainLooper())
     private val dashboardRefresh = object : Runnable {
@@ -532,7 +533,14 @@ class MainActivity : AppCompatActivity() {
         showResult(helpText)
     }
 
-    private fun recordConversation(message: String) {\n        val input = lastUserInput ?: return\n        if (::conversationContext.isInitialized && input.isNotBlank() && message.isNotBlank()) conversationContext.addExchange(input, message)\n        lastUserInput = null\n    }\n\n    private fun showResult(message: String) {\n        recordConversation(message)
+    private fun recordConversation(message: String) {
+        val input = lastUserInput ?: return
+        if (::conversationContext.isInitialized && input.isNotBlank() && message.isNotBlank()) conversationContext.addExchange(input, message)
+        lastUserInput = null
+    }
+
+    private fun showResult(message: String) {
+        recordConversation(message)
         // Display result centered in commandText (replaces temporary status)
         binding.commandText.text = message
         binding.commandText.visibility = View.VISIBLE
@@ -540,7 +548,8 @@ class MainActivity : AppCompatActivity() {
         // No Toast - result is shown in the conversation area
     }
 
-    private fun showError(message: String) {\n        recordConversation(message)
+    private fun showError(message: String) {
+        recordConversation(message)
         // Display error centered in commandText
         binding.commandText.text = message
         binding.commandText.visibility = View.VISIBLE
