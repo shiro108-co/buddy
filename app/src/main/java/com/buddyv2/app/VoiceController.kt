@@ -113,6 +113,14 @@ class VoiceController(
         })
     }
 
+    fun onHostResumed() {
+        if (uiController.getState() == VoiceUIController.VoiceState.SPEAKING) {
+            diagnosticLogger.log("Recovering stale SPEAKING state after returning to Buddy")
+            textToSpeechManager.stop()
+            uiController.setState(VoiceUIController.VoiceState.IDLE)
+        }
+    }
+
     fun stopSpeaking() {
         textToSpeechManager.stop()
         uiController.setState(VoiceUIController.VoiceState.IDLE)
