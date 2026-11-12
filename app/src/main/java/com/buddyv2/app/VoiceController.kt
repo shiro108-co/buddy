@@ -80,6 +80,7 @@ class VoiceController(
         if (!voiceActionPending) return
         voiceActionPending = false
         onResultReady(message)
+        uiController.setState(VoiceUIController.VoiceState.IDLE)
     }
 
     override fun onReadyForSpeech() {}
