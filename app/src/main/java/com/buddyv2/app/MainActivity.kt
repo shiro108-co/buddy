@@ -110,7 +110,7 @@ class MainActivity : AppCompatActivity() {
             onIntentParsed = { intent ->
                 when (intent) {
                     is IntentParser.Intent.OpenApp -> extractAppName(intent.appName)?.let { openApp(it) }
-                    is IntentParser.Intent.CallContact -> extractContactName(intent.contactName)?.let { resolveAndCall(it) }
+                    is IntentParser.Intent.CallContact -> resolveAndCall(intent.contactName.trim())
                     is IntentParser.Intent.WhatsAppMessage -> extractContactAndMessage("whatsapp ${intent.contactName}")?.let { (contact, message) -> resolveAndSendWhatsApp(contact, message) } ?: showError("Use: WhatsApp contact name message")
                     is IntentParser.Intent.SearchWeb -> extractSearchQuery(intent.query)?.let { searchWeb(it) }
                     is IntentParser.Intent.Help -> showHelp(intent.topic ?: "")
