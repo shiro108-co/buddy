@@ -22,7 +22,6 @@ class VoiceController(
     private val diagnosticLogger: DiagnosticLogger
 ) : LifecycleObserver, SpeechRecognizerManager.RecognitionCallback {
     private val speechRecognizerManager = SpeechRecognizerManager(activity, this, diagnosticLogger)
-    private val textToSpeechManager = TextToSpeechManager(activity)
     private var isMicPermissionGranted = false
     private var voiceActionPending = false
     private var isVoiceInputActive = false
@@ -30,19 +29,16 @@ class VoiceController(
     @OnLifecycleEvent(Lifecycle.Event.ON_CREATE)
     fun onCreate() {
         checkMicPermission()
-        textToSpeechManager.initialize { }
         speechRecognizerManager.initialize()
     }
 
     @OnLifecycleEvent(Lifecycle.Event.ON_DESTROY)
     fun onDestroy() {
         speechRecognizerManager.destroy()
-        textToSpeechManager.shutdown()
     }
 
     private fun checkMicPermission() {
         isMicPermissionGranted = ContextCompat.checkSelfPermission(activity, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-        if (!isMicPermissionGranted) ActivityCompat.requestPermissions(activity, arrayOf(Manifest.permission.RECORD_AUDIO), 200)
     }
 
     fun onRequestPermissionsResult(requestCode: Int, grantResults: IntArray) {
@@ -57,10 +53,10 @@ class VoiceController(
         isVoiceInputActive = true
         if (!isMicPermissionGranted) {
             checkMicPermission()
+            if (!isMicPermissionGranted) onError("Microphone permission is not enabled. Grant it in Android app settings.")
             isVoiceInputActive = false
             return
         }
-        if (textToSpeechManager.isTtsSpeaking) textToSpeechManager.stop()
         uiController.setState(VoiceUIController.VoiceState.LISTENING)
         speechRecognizerManager.startListening()
     }
@@ -84,7 +80,7 @@ class VoiceController(
         if (!voiceActionPending) return
         voiceActionPending = false
         onResultReady(message)
-        speakResponse(message)
+        uiController.setState(VoiceUIController.VoiceState.IDLE)
     }
 
     override fun onReadyForSpeech() {}
@@ -97,6 +93,7 @@ class VoiceController(
     override fun onResults(finalText: String) {
         uiController.setState(VoiceUIController.VoiceState.PROCESSING)
         voiceActionPending = true
+        onTextRecognized(finalText)
         onIntentParsed(intentParser.parse(finalText))
     }
     override fun onEndOfSpeech() {}
@@ -112,27 +109,22 @@ class VoiceController(
         })
     }
 
-    fun stopSpeaking() {
-        textToSpeechManager.stop()
-        uiController.setState(VoiceUIController.VoiceState.IDLE)
+    fun onHostResumed() {
+        if (uiController.getState() != VoiceUIController.VoiceState.IDLE) {
+            diagnosticLogger.log("Resetting voice UI after returning to Buddy")
+            isVoiceInputActive = false
+            voiceActionPending = false
+            speechRecognizerManager.cancel()
+            uiController.setState(VoiceUIController.VoiceState.IDLE)
+        }
     }
 
-    private fun speakResponse(text: String) {
-        if (text.isBlank()) {
-            uiController.setState(VoiceUIController.VoiceState.IDLE)
-            return
-        }
-        uiController.setState(VoiceUIController.VoiceState.SPEAKING)
-        textToSpeechManager.speak(text, object : TextToSpeechManager.SpeakCallback {
-            override fun onStart() {}
-            override fun onDone() { uiController.setState(VoiceUIController.VoiceState.IDLE) }
-            override fun onError(errorMessage: String) { uiController.setState(VoiceUIController.VoiceState.IDLE) }
-        })
+    fun stopSpeaking() {
+        uiController.setState(VoiceUIController.VoiceState.IDLE)
     }
 
     fun cancelAll() {
         speechRecognizerManager.cancel()
-        textToSpeechManager.stop()
         isVoiceInputActive = false
         voiceActionPending = false
         uiController.setState(VoiceUIController.VoiceState.IDLE)

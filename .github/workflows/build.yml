@@ -2,9 +2,9 @@ name: Build Debug APK
 
 on:
   push:
-    branches: [main]
+    branches: [main, buddy-lite-enhancements]
   pull_request:
-    branches: [main]
+    branches: [main, public-buddy-dashboard]
 
 jobs:
   build:

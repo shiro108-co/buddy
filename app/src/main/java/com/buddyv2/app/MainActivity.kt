@@ -50,6 +50,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var conversationContext: ConversationContext
     private lateinit var voiceUIController: VoiceUIController
     private lateinit var voiceController: VoiceController
+    private var lastUserInput: String? = null
 
     private val dashboardHandler = Handler(Looper.getMainLooper())
     private val dashboardRefresh = object : Runnable {
@@ -59,11 +60,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private val permissions = arrayOf(
-        android.Manifest.permission.CALL_PHONE,
-        android.Manifest.permission.SYSTEM_ALERT_WINDOW,
-        android.Manifest.permission.READ_CONTACTS
-    )
+    private val permissions = buildList {
+        add(android.Manifest.permission.RECORD_AUDIO)
+        add(android.Manifest.permission.READ_CONTACTS)
+        add(android.Manifest.permission.CALL_PHONE)
+        if (Build.VERSION.SDK_INT >= 31) add(android.Manifest.permission.BLUETOOTH_CONNECT)
+        if (Build.VERSION.SDK_INT >= 33) add(android.Manifest.permission.POST_NOTIFICATIONS)
+    }
+    private var awaitingSpecialPermission = false
+    private var specialPermissionDialogShown = false
 
     companion object {
         private const val TAG = "BuddyV2Text"
@@ -94,13 +99,14 @@ class MainActivity : AppCompatActivity() {
         checkPermissions()
         startDashboard()
         setupDashboardControls()
+        setupToolsEntry()
     }
 
 
 
     private fun initializeVoice() {
         diagnosticLogger = DiagnosticLogger(this)
-        conversationContext = ConversationContext()
+        conversationContext = ConversationContext(this)
         val parser = IntentParser(conversationContext)
         voiceUIController = VoiceUIController(this, binding.micButton, binding.statusText, binding.commandText, binding.commandInput)
         voiceController = VoiceController(
@@ -108,8 +114,8 @@ class MainActivity : AppCompatActivity() {
             onIntentParsed = { intent ->
                 when (intent) {
                     is IntentParser.Intent.OpenApp -> extractAppName(intent.appName)?.let { openApp(it) }
-                    is IntentParser.Intent.CallContact -> extractContactName(intent.contactName)?.let { resolveAndCall(it) }
-                    is IntentParser.Intent.WhatsAppMessage -> extractContactAndMessage(intent.contactName)?.let { (contact, message) -> resolveAndSendWhatsApp(contact, message) }
+                    is IntentParser.Intent.CallContact -> resolveAndCall(intent.contactName.trim())
+                    is IntentParser.Intent.WhatsAppMessage -> extractContactAndMessage("whatsapp ${intent.contactName}")?.let { (contact, message) -> resolveAndSendWhatsApp(contact, message) } ?: showError("Use: WhatsApp contact name message")
                     is IntentParser.Intent.SearchWeb -> extractSearchQuery(intent.query)?.let { searchWeb(it) }
                     is IntentParser.Intent.Help -> showHelp(intent.topic ?: "")
                     IntentParser.Intent.StopSpeaking -> voiceController.stopSpeaking()
@@ -117,7 +123,7 @@ class MainActivity : AppCompatActivity() {
                     is IntentParser.Intent.Unknown -> searchWeb(intent.originalText)
                 }
             },
-            onTextRecognized = { },
+            onTextRecognized = { recognized -> lastUserInput = recognized },
             onResultReady = { message -> binding.commandText.text = message },
             onError = { message -> showError(message) },
             diagnosticLogger = diagnosticLogger
@@ -147,6 +153,16 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }.start()
+    }
+
+    private fun setupToolsEntry() {
+        val button = android.widget.Button(this).apply {
+            text = "BUDDY TOOLS"
+            contentDescription = "Open Buddy tools, reminders, local history and privacy settings"
+            setOnClickListener { startActivity(Intent(this@MainActivity, BuddyToolsActivity::class.java)) }
+        }
+        (binding.dashboardScroll.getChildAt(0) as? ViewGroup)?.addView(button, 0,
+            ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
     }
 
     private fun setupDashboardControls() {
@@ -416,25 +432,62 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkPermissions() {
-        val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) permissions + android.Manifest.permission.BLUETOOTH_CONNECT else permissions
-        val missingPermissions = requiredPermissions.filter {
+        val prefs = getSharedPreferences("buddy_permission_setup", MODE_PRIVATE)
+        if (prefs.getBoolean("completed", false)) return
+        val missing = permissions.filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }
-        if (missingPermissions.isNotEmpty()) {
-            ActivityCompat.requestPermissions(this, missingPermissions.toTypedArray(), PERMISSION_REQUEST_CODE)
-        }
+        if (missing.isNotEmpty()) {
+            ActivityCompat.requestPermissions(this, missing.toTypedArray(), PERMISSION_REQUEST_CODE)
+        } else showNextSpecialPermission()
+    }
 
-        // Check overlay permission for Android 23+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
-            val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
-            startActivityForResult(intent, OVERLAY_PERMISSION_REQUEST_CODE)
+    private fun hasUsageAccess(): Boolean = runCatching {
+        val appOps = getSystemService(APP_OPS_SERVICE) as android.app.AppOpsManager
+        appOps.checkOpNoThrow(android.app.AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), packageName) == android.app.AppOpsManager.MODE_ALLOWED
+    }.getOrDefault(false)
+
+    private fun showNextSpecialPermission() {
+        if (specialPermissionDialogShown) return
+        val special = listOf(
+            Triple("Modify system settings (brightness)", Settings.System.canWrite(this),
+                Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:$packageName"))),
+            Triple("Display over other apps", Settings.canDrawOverlays(this),
+                Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))),
+            Triple("Usage access", hasUsageAccess(), Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+        )
+        val next = special.firstOrNull { !it.second }
+        if (next == null) {
+            getSharedPreferences("buddy_permission_setup", MODE_PRIVATE).edit().putBoolean("completed", true).apply()
+            return
         }
+        specialPermissionDialogShown = true
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Buddy permission setup")
+            .setMessage("Enable ${next.first} in Android Settings. Buddy needs this access for the related feature.")
+            .setPositiveButton("Open settings") { _, _ ->
+                awaitingSpecialPermission = true
+                specialPermissionDialogShown = false
+                runCatching { startActivity(next.third) }.onFailure {
+                    awaitingSpecialPermission = false
+                    Toast.makeText(this, "Could not open the required settings page.", Toast.LENGTH_LONG).show()
+                }
+            }
+            .setNegativeButton("Skip for now") { _, _ ->
+                getSharedPreferences("buddy_permission_setup", MODE_PRIVATE).edit().putBoolean("completed", true).apply()
+                specialPermissionDialogShown = false
+            }
+            .setOnCancelListener { specialPermissionDialogShown = false }
+            .show()
     }
 
     private fun submitCommand() {
         val input = binding.commandInput.text.toString()
         val trimmed = input.trim()
         if (trimmed.isEmpty()) return
+
+        // Persist a local-only command history
+        BuddyLocalStore(this).log(trimmed)
 
         // Dismiss autocomplete if showing
         deactivateSlashTrigger()
@@ -477,8 +530,14 @@ class MainActivity : AppCompatActivity() {
             "search" -> extractSearchQuery(args)?.let { searchWeb(it) }
             "help" -> showHelp(args)
             else -> {
-                val helpText = CommandRegistry.getHelp(trigger)
-                showResult(helpText)
+                val shortcut = BuddyLocalStore(this).aliases().firstOrNull { it.first.equals(trigger, ignoreCase = true) }
+                if (shortcut != null) {
+                    val target = shortcut.second
+                    if (target.startsWith("https://") || target.startsWith("http://")) {
+                        runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(target))) }
+                            .onFailure { showError("Unable to open shortcut URL.") }
+                    } else searchWeb(target)
+                } else showResult(CommandRegistry.getHelp(trigger))
             }
         }
     }
@@ -512,7 +571,14 @@ class MainActivity : AppCompatActivity() {
         showResult(helpText)
     }
 
+    private fun recordConversation(message: String) {
+        val input = lastUserInput ?: return
+        if (::conversationContext.isInitialized && input.isNotBlank() && message.isNotBlank()) conversationContext.addExchange(input, message)
+        lastUserInput = null
+    }
+
     private fun showResult(message: String) {
+        recordConversation(message)
         // Display result centered in commandText (replaces temporary status)
         binding.commandText.text = message
         binding.commandText.visibility = View.VISIBLE
@@ -521,6 +587,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showError(message: String) {
+        recordConversation(message)
         // Display error centered in commandText
         binding.commandText.text = message
         binding.commandText.visibility = View.VISIBLE
@@ -589,15 +656,40 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun extractContactAndMessage(command: String): Pair<String, String>? {
-        val whatsappMatch = "whatsapp\\s+(.+?)\\s*(?:,|\\s+)(?:tell\\s+(?:him|her|them)\\s+)?(.+)".toRegex().find(command)
-        val messageMatch = "message\\s+(.+?)\\s*(?:,|\\s+)(?:tell\\s+(?:him|her|them)\\s+)?(.+)".toRegex().find(command)
-        val simpleWhatsAppMatch = "whatsapp\\s+(.+?)\\s+(.+)".toRegex().find(command)
-        val simpleMessageMatch = "message\\s+(.+?)\\s+(.+)".toRegex().find(command)
+        val body = command.trim().replaceFirst(Regex("^(whatsapp|message|text)\\s+", RegexOption.IGNORE_CASE), "")
+            .replaceFirst(Regex("^tell\\s+(him|her|them)\\s+", RegexOption.IGNORE_CASE), "")
+        if (body.isBlank()) return null
 
-        return whatsappMatch?.let { Pair(it.groupValues[1], it.groupValues[2]) }
-            ?: messageMatch?.let { Pair(it.groupValues[1], it.groupValues[2]) }
-            ?: simpleWhatsAppMatch?.let { Pair(it.groupValues[1], it.groupValues[2]) }
-            ?: simpleMessageMatch?.let { Pair(it.groupValues[1], it.groupValues[2]) }
+        val names = mutableListOf<String>()
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
+            contentResolver.query(
+                ContactsContract.Contacts.CONTENT_URI,
+                arrayOf(ContactsContract.Contacts.DISPLAY_NAME, ContactsContract.Contacts.HAS_PHONE_NUMBER),
+                "${ContactsContract.Contacts.HAS_PHONE_NUMBER} = ?",
+                arrayOf("1"),
+                null
+            )?.use { cursor ->
+                while (cursor.moveToNext()) {
+                    val name = cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.Contacts.DISPLAY_NAME))
+                    if (!name.isNullOrBlank()) names.add(name)
+                }
+            }
+        }
+
+        val normalizedBody = body.trim()
+        val matchedName = names.distinct().sortedByDescending { it.length }.firstOrNull { name ->
+            normalizedBody.startsWith(name, ignoreCase = true) &&
+                (normalizedBody.length == name.length || normalizedBody[name.length].isWhitespace() || normalizedBody[name.length] == ',')
+        }
+        if (matchedName != null) {
+            val message = normalizedBody.substring(matchedName.length).trim().trimStart(',')
+                .replaceFirst(Regex("^tell\\s+(him|her|them)\\s+", RegexOption.IGNORE_CASE), "")
+                .trim()
+            return if (message.isNotBlank()) matchedName to message else null
+        }
+
+        val parts = normalizedBody.split(Regex("\\s+"), limit = 2)
+        return if (parts.size == 2) parts[0] to parts[1] else null
     }
 
     private fun extractSearchQuery(command: String): String? {
@@ -832,6 +924,7 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (::voiceController.isInitialized) voiceController.onRequestPermissionsResult(requestCode, grantResults)
         when (requestCode) {
+            PERMISSION_REQUEST_CODE -> showNextSpecialPermission()
             CALL_PERMISSION_REQUEST_CODE -> {
                 if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     pendingCallNumber?.let { makeCall(it) }
@@ -859,7 +952,12 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (::voiceController.isInitialized) voiceController.onHostResumed()
         refreshDashboard()
+        if (awaitingSpecialPermission) {
+            awaitingSpecialPermission = false
+            showNextSpecialPermission()
+        }
     }
 
     override fun onDestroy() {

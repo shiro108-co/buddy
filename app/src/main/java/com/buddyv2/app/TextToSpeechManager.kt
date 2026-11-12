@@ -19,6 +19,7 @@ class TextToSpeechManager(private val context: Context) {
     private var isSpeaking = false
     private val utteranceQueue = ConcurrentLinkedQueue<Utterance>()
     private var currentUtteranceId = 0
+    private var activeUtterance: Utterance? = null
 
     private var onInitListener: ((Boolean) -> Unit)? = null
 
@@ -83,6 +84,8 @@ class TextToSpeechManager(private val context: Context) {
 
     fun stop() {
         tts?.stop()
+        activeUtterance?.callback?.onError("Speech stopped")
+        activeUtterance = null
         utteranceQueue.clear()
         isSpeaking = false
         Log.d(TAG, "TTS stopped and queue cleared")
@@ -108,6 +111,7 @@ class TextToSpeechManager(private val context: Context) {
         val utterance = utteranceQueue.poll() ?: return
         isSpeaking = true
 
+        activeUtterance = utterance
         val utteranceId = "buddy_${utterance.id}"
         val params: Bundle? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             Bundle().apply { putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, utteranceId) }
@@ -121,9 +125,19 @@ class TextToSpeechManager(private val context: Context) {
         if (result != TextToSpeech.SUCCESS) {
             Log.e(TAG, "TTS speak failed: $result")
             isSpeaking = false
+            activeUtterance = null
             utterance.callback?.onError("TTS speak failed: $result")
             processQueue()
         }
+    }
+
+    private fun finishUtterance(utteranceId: String, error: String?) {
+        val finished = activeUtterance ?: return
+        if (utteranceId != "buddy_${finished.id}") return
+        activeUtterance = null
+        isSpeaking = false
+        if (error == null) finished.callback?.onDone() else finished.callback?.onError(error)
+        processQueue()
     }
 
     private val utteranceProgressListener = object : UtteranceProgressListener() {
@@ -133,14 +147,17 @@ class TextToSpeechManager(private val context: Context) {
 
         override fun onDone(utteranceId: String) {
             Log.d(TAG, "Utterance done: $utteranceId")
-            isSpeaking = false
-            processQueue()
+            finishUtterance(utteranceId, null)
         }
 
         override fun onError(utteranceId: String) {
             Log.e(TAG, "Utterance error: $utteranceId")
-            isSpeaking = false
-            processQueue()
+            finishUtterance(utteranceId, "Text-to-speech failed")
+        }
+
+        override fun onError(utteranceId: String, errorCode: Int) {
+            Log.e(TAG, "Utterance error: $utteranceId code=$errorCode")
+            finishUtterance(utteranceId, "Text-to-speech failed ($errorCode)")
         }
     }
 }
