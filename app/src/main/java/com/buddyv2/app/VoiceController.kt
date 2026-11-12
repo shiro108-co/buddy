@@ -39,7 +39,6 @@ class VoiceController(
 
     private fun checkMicPermission() {
         isMicPermissionGranted = ContextCompat.checkSelfPermission(activity, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-        if (!isMicPermissionGranted) ActivityCompat.requestPermissions(activity, arrayOf(Manifest.permission.RECORD_AUDIO), 200)
     }
 
     fun onRequestPermissionsResult(requestCode: Int, grantResults: IntArray) {
@@ -54,6 +53,7 @@ class VoiceController(
         isVoiceInputActive = true
         if (!isMicPermissionGranted) {
             checkMicPermission()
+            if (!isMicPermissionGranted) onError("Microphone permission is not enabled. Grant it in Android app settings.")
             isVoiceInputActive = false
             return
         }
