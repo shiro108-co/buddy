@@ -60,11 +60,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private val permissions = arrayOf(
-        android.Manifest.permission.CALL_PHONE,
-        android.Manifest.permission.SYSTEM_ALERT_WINDOW,
-        android.Manifest.permission.READ_CONTACTS
-    )
+    private val permissions = buildList {
+        add(android.Manifest.permission.RECORD_AUDIO)
+        add(android.Manifest.permission.READ_CONTACTS)
+        add(android.Manifest.permission.CALL_PHONE)
+        if (Build.VERSION.SDK_INT >= 31) add(android.Manifest.permission.BLUETOOTH_CONNECT)
+        if (Build.VERSION.SDK_INT >= 33) add(android.Manifest.permission.POST_NOTIFICATIONS)
+    }
+    private var awaitingSpecialPermission = false
+    private var specialPermissionDialogShown = false
 
     companion object {
         private const val TAG = "BuddyV2Text"
@@ -428,19 +432,53 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkPermissions() {
-        val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) permissions + android.Manifest.permission.BLUETOOTH_CONNECT else permissions
-        val missingPermissions = requiredPermissions.filter {
+        val prefs = getSharedPreferences("buddy_permission_setup", MODE_PRIVATE)
+        if (prefs.getBoolean("completed", false)) return
+        val missing = permissions.filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }
-        if (missingPermissions.isNotEmpty()) {
-            ActivityCompat.requestPermissions(this, missingPermissions.toTypedArray(), PERMISSION_REQUEST_CODE)
-        }
+        if (missing.isNotEmpty()) {
+            ActivityCompat.requestPermissions(this, missing.toTypedArray(), PERMISSION_REQUEST_CODE)
+        } else showNextSpecialPermission()
+    }
 
-        // Check overlay permission for Android 23+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
-            val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
-            startActivityForResult(intent, OVERLAY_PERMISSION_REQUEST_CODE)
+    private fun hasUsageAccess(): Boolean = runCatching {
+        val appOps = getSystemService(APP_OPS_SERVICE) as android.app.AppOpsManager
+        appOps.checkOpNoThrow(android.app.AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), packageName) == android.app.AppOpsManager.MODE_ALLOWED
+    }.getOrDefault(false)
+
+    private fun showNextSpecialPermission() {
+        if (specialPermissionDialogShown) return
+        val special = listOf(
+            Triple("Modify system settings (brightness)", Settings.System.canWrite(this),
+                Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:$packageName"))),
+            Triple("Display over other apps", Settings.canDrawOverlays(this),
+                Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))),
+            Triple("Usage access", hasUsageAccess(), Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+        )
+        val next = special.firstOrNull { !it.second }
+        if (next == null) {
+            getSharedPreferences("buddy_permission_setup", MODE_PRIVATE).edit().putBoolean("completed", true).apply()
+            return
         }
+        specialPermissionDialogShown = true
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Buddy permission setup")
+            .setMessage("Enable ${next.first} in Android Settings. Buddy needs this access for the related feature.")
+            .setPositiveButton("Open settings") { _, _ ->
+                awaitingSpecialPermission = true
+                specialPermissionDialogShown = false
+                runCatching { startActivity(next.third) }.onFailure {
+                    awaitingSpecialPermission = false
+                    Toast.makeText(this, "Could not open the required settings page.", Toast.LENGTH_LONG).show()
+                }
+            }
+            .setNegativeButton("Skip for now") { _, _ ->
+                getSharedPreferences("buddy_permission_setup", MODE_PRIVATE).edit().putBoolean("completed", true).apply()
+                specialPermissionDialogShown = false
+            }
+            .setOnCancelListener { specialPermissionDialogShown = false }
+            .show()
     }
 
     private fun submitCommand() {
@@ -886,6 +924,7 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (::voiceController.isInitialized) voiceController.onRequestPermissionsResult(requestCode, grantResults)
         when (requestCode) {
+            PERMISSION_REQUEST_CODE -> showNextSpecialPermission()
             CALL_PERMISSION_REQUEST_CODE -> {
                 if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     pendingCallNumber?.let { makeCall(it) }
@@ -915,6 +954,10 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         if (::voiceController.isInitialized) voiceController.onHostResumed()
         refreshDashboard()
+        if (awaitingSpecialPermission) {
+            awaitingSpecialPermission = false
+            showNextSpecialPermission()
+        }
     }
 
     override fun onDestroy() {
