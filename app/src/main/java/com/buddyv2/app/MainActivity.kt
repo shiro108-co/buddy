@@ -888,6 +888,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (::voiceController.isInitialized) voiceController.onHostResumed()
         refreshDashboard()
     }
 
