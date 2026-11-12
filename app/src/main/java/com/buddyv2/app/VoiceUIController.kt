@@ -15,7 +15,7 @@ class VoiceUIController(
     private val commandText: TextView,
     private val commandInput: android.widget.EditText
 ) {
-    enum class VoiceState { IDLE, LISTENING, PROCESSING, SPEAKING }
+    enum class VoiceState { IDLE, LISTENING, PROCESSING }
     private var state = VoiceState.IDLE
     private var animator: ObjectAnimator? = null
     fun getState() = state
@@ -49,11 +49,6 @@ class VoiceUIController(
                 animator = ObjectAnimator.ofFloat(micButton, "rotation", 0f, 360f).apply {
                     duration = 900; repeatCount = ValueAnimator.INFINITE; start()
                 }
-            }
-            VoiceState.SPEAKING -> {
-                micButton.setImageResource(android.R.drawable.ic_media_play)
-                micButton.setColorFilter(ContextCompat.getColor(context, R.color.accent))
-                statusText.text = "Speaking…"
             }
         }
     }
