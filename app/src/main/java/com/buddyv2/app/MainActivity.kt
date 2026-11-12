@@ -111,7 +111,7 @@ class MainActivity : AppCompatActivity() {
                 when (intent) {
                     is IntentParser.Intent.OpenApp -> extractAppName(intent.appName)?.let { openApp(it) }
                     is IntentParser.Intent.CallContact -> extractContactName(intent.contactName)?.let { resolveAndCall(it) }
-                    is IntentParser.Intent.WhatsAppMessage -> extractContactAndMessage(intent.contactName)?.let { (contact, message) -> resolveAndSendWhatsApp(contact, message) }
+                    is IntentParser.Intent.WhatsAppMessage -> extractContactAndMessage("whatsapp ${intent.contactName}")?.let { (contact, message) -> resolveAndSendWhatsApp(contact, message) } ?: showError("Use: WhatsApp contact name message")
                     is IntentParser.Intent.SearchWeb -> extractSearchQuery(intent.query)?.let { searchWeb(it) }
                     is IntentParser.Intent.Help -> showHelp(intent.topic ?: "")
                     IntentParser.Intent.StopSpeaking -> voiceController.stopSpeaking()
@@ -618,15 +618,40 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun extractContactAndMessage(command: String): Pair<String, String>? {
-        val whatsappMatch = "whatsapp\\s+(.+?)\\s*(?:,|\\s+)(?:tell\\s+(?:him|her|them)\\s+)?(.+)".toRegex().find(command)
-        val messageMatch = "message\\s+(.+?)\\s*(?:,|\\s+)(?:tell\\s+(?:him|her|them)\\s+)?(.+)".toRegex().find(command)
-        val simpleWhatsAppMatch = "whatsapp\\s+(.+?)\\s+(.+)".toRegex().find(command)
-        val simpleMessageMatch = "message\\s+(.+?)\\s+(.+)".toRegex().find(command)
+        val body = command.trim().replaceFirst(Regex("^(whatsapp|message|text)\\s+", RegexOption.IGNORE_CASE), "")
+            .replaceFirst(Regex("^tell\\s+(him|her|them)\\s+", RegexOption.IGNORE_CASE), "")
+        if (body.isBlank()) return null
 
-        return whatsappMatch?.let { Pair(it.groupValues[1], it.groupValues[2]) }
-            ?: messageMatch?.let { Pair(it.groupValues[1], it.groupValues[2]) }
-            ?: simpleWhatsAppMatch?.let { Pair(it.groupValues[1], it.groupValues[2]) }
-            ?: simpleMessageMatch?.let { Pair(it.groupValues[1], it.groupValues[2]) }
+        val names = mutableListOf<String>()
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
+            contentResolver.query(
+                ContactsContract.Contacts.CONTENT_URI,
+                arrayOf(ContactsContract.Contacts.DISPLAY_NAME, ContactsContract.Contacts.HAS_PHONE_NUMBER),
+                "${ContactsContract.Contacts.HAS_PHONE_NUMBER} = ?",
+                arrayOf("1"),
+                null
+            )?.use { cursor ->
+                while (cursor.moveToNext()) {
+                    val name = cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.Contacts.DISPLAY_NAME))
+                    if (!name.isNullOrBlank()) names.add(name)
+                }
+            }
+        }
+
+        val normalizedBody = body.trim()
+        val matchedName = names.distinct().sortedByDescending { it.length }.firstOrNull { name ->
+            normalizedBody.startsWith(name, ignoreCase = true) &&
+                (normalizedBody.length == name.length || normalizedBody[name.length].isWhitespace() || normalizedBody[name.length] == ',')
+        }
+        if (matchedName != null) {
+            val message = normalizedBody.substring(matchedName.length).trim().trimStart(',')
+                .replaceFirst(Regex("^tell\\s+(him|her|them)\\s+", RegexOption.IGNORE_CASE), "")
+                .trim()
+            return if (message.isNotBlank()) matchedName to message else null
+        }
+
+        val parts = normalizedBody.split(Regex("\\s+"), limit = 2)
+        return if (parts.size == 2) parts[0] to parts[1] else null
     }
 
     private fun extractSearchQuery(command: String): String? {
